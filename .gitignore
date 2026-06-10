@@ -50,3 +50,6 @@ DATABASE_SCHEMA.md
 PROJECT_SPEC.md
 TECH_STACK.md
 UI_DESIGN.md
+
+# Credenziali locali
+.env
