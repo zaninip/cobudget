@@ -1,0 +1,7 @@
+# .gitattributes
+* text=auto
+*.dart text eol=lf
+*.swift text eol=lf
+*.java text eol=lf
+*.gradle text eol=lf
+*.cmake text eol=lf
