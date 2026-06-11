@@ -1,24 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/providers/supabase_provider.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../budget/data/supabase_budget_repository.dart';
+import '../../data/supabase_expense_repository.dart';
+import '../../domain/category.dart';
+import '../utils/category_visuals.dart';
 
-/// Schermata placeholder usata per verificare il setup di Riverpod e Supabase.
-/// Verrà sostituita dalla dashboard descritta in UI_DESIGN.md.
+/// Dashboard principale: budget corrente, ultime spese e accesso al form
+/// di inserimento manuale (vedi UI_DESIGN.md - sezione 3).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(authStateChangesProvider);
-    final user = ref.watch(supabaseClientProvider).auth.currentUser;
     final budget = ref.watch(currentBudgetProvider);
+    final expensesAsync = ref.watch(recentExpensesProvider);
+    final categoriesAsync = ref.watch(expenseCategoriesProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('coBudget'),
+        title: Text(
+          budget.when(
+            data: (value) => value?.name ?? 'coBudget',
+            loading: () => 'coBudget',
+            error: (_, _) => 'coBudget',
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -27,37 +42,52 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text('coBudget', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              user != null
-                  ? 'Connesso come ${user.email}'
-                  : 'Connesso a Supabase - nessuna sessione',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              budget.when(
-                data: (value) => value != null
-                    ? 'Budget: ${value.name} (codice: ${value.inviteCode})'
-                    : 'Nessun budget',
-                loading: () => 'Caricamento budget...',
-                error: (_, _) => 'Errore nel caricamento del budget',
-              ),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
+      body: expensesAsync.when(
+        data: (expenses) {
+          if (expenses.isEmpty) {
+            return const Center(child: Text('Nessuna spesa registrata'));
+          }
+
+          final categories = categoriesAsync.value ?? [];
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: expenses.length,
+            itemBuilder: (context, index) {
+              final expense = expenses[index];
+
+              ExpenseCategory? category;
+              for (final c in categories) {
+                if (c.id == expense.categoryId) {
+                  category = c;
+                  break;
+                }
+              }
+
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: category != null
+                      ? categoryColor(category.color).withValues(alpha: 0.15)
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    category != null ? categoryIcon(category.icon) : Icons.category,
+                    color: category != null ? categoryColor(category.color) : null,
+                  ),
+                ),
+                title: Text(expense.title),
+                subtitle: Text(_formatDate(expense.date)),
+                trailing: Text('€ ${expense.amount.toStringAsFixed(2)}'),
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text('Errore nel caricamento delle spese: $error')),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/expenses/new'),
+        tooltip: 'Nuova spesa',
+        child: const Icon(Icons.add),
       ),
     );
   }

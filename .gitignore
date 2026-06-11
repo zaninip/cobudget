@@ -53,3 +53,9 @@ UI_DESIGN.md
 
 # Credenziali locali
 .env
+
+# Flutter DevTools (config locale)
+devtools_options.yaml
+
+# Stato di sessione di Claude Code
+.claude/scheduled_tasks.lock

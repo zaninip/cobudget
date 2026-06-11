@@ -7,6 +7,7 @@ import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/budget/data/supabase_budget_repository.dart';
 import '../features/budget/presentation/screens/budget_setup_screen.dart';
 import '../features/expenses/presentation/screens/home_screen.dart';
+import '../features/expenses/presentation/screens/manual_expense_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
@@ -25,14 +26,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isLoggingIn ? null : '/login';
       }
 
-      final budget = await ref.read(currentBudgetProvider.future);
+      // Forza una rilettura del budget: subito dopo un login, lo stream
+      // authStateChanges (da cui dipende currentBudgetProvider) potrebbe
+      // non aver ancora propagato il nuovo stato, restituendo un valore
+      // in cache non aggiornato (es. null da prima del login).
+      final budget = await ref.refresh(currentBudgetProvider.future);
       final isBudgetSetup = state.matchedLocation == '/budget-setup';
 
       if (budget == null) {
         return isBudgetSetup ? null : '/budget-setup';
       }
 
-      if (isLoggingIn || isBudgetSetup) return '/';
+      if (isLoggingIn || isBudgetSetup) {
+        return '/';
+      }
       return null;
     },
     routes: [
@@ -50,6 +57,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/budget-setup',
         name: 'budget-setup',
         builder: (context, state) => const BudgetSetupScreen(),
+      ),
+      GoRoute(
+        path: '/expenses/new',
+        name: 'expense-new',
+        builder: (context, state) => const ManualExpenseScreen(),
       ),
     ],
   );
