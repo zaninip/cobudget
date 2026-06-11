@@ -7,8 +7,8 @@ abstract class ExpenseRepository {
   /// ciascuna con le proprie sottocategorie.
   Future<List<ExpenseCategory>> getCategories(String budgetId);
 
-  /// Le spese più recenti del budget, ordinate per data decrescente.
-  Future<List<Expense>> getRecentExpenses(String budgetId, {int limit = 10});
+  /// Tutte le spese del budget, ordinate per data decrescente.
+  Future<List<Expense>> getRecentExpenses(String budgetId);
 
   /// Crea una singola spesa in data [date].
   Future<void> addExpense({
@@ -45,4 +45,17 @@ abstract class ExpenseRepository {
     required String categoryId,
     required String name,
   });
+
+  /// Aggiorna titolo e importo di una spesa esistente.
+  Future<void> updateExpense({
+    required String id,
+    required String title,
+    required double amount,
+  });
+
+  /// Elimina una singola spesa.
+  Future<void> deleteExpense(String id);
+
+  /// Elimina tutte le spese con lo stesso [spreadGroupId] (spesa spalmata).
+  Future<void> deleteSpreadGroup(String spreadGroupId);
 }

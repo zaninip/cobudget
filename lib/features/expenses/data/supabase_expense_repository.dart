@@ -29,14 +29,13 @@ class SupabaseExpenseRepository implements ExpenseRepository {
   }
 
   @override
-  Future<List<Expense>> getRecentExpenses(String budgetId, {int limit = 10}) async {
+  Future<List<Expense>> getRecentExpenses(String budgetId) async {
     final result = await _client
         .from('expenses')
         .select()
         .eq('budget_id', budgetId)
         .order('date', ascending: false)
-        .order('created_at', ascending: false)
-        .limit(limit);
+        .order('created_at', ascending: false);
 
     return (result as List).map((e) => Expense.fromMap(e as Map<String, dynamic>)).toList();
   }
@@ -129,6 +128,25 @@ class SupabaseExpenseRepository implements ExpenseRepository {
         .single();
 
     return Subcategory.fromMap(result);
+  }
+
+  @override
+  Future<void> updateExpense({
+    required String id,
+    required String title,
+    required double amount,
+  }) async {
+    await _client.from('expenses').update({'title': title, 'amount': amount}).eq('id', id);
+  }
+
+  @override
+  Future<void> deleteExpense(String id) async {
+    await _client.from('expenses').delete().eq('id', id);
+  }
+
+  @override
+  Future<void> deleteSpreadGroup(String spreadGroupId) async {
+    await _client.from('expenses').delete().eq('spread_group_id', spreadGroupId);
   }
 
   String _formatDate(DateTime date) {

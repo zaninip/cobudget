@@ -7,6 +7,7 @@ import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../utils/category_visuals.dart';
+import '../widgets/expense_detail_dialog.dart';
 
 /// Dashboard principale: budget corrente, ultime spese e accesso al form
 /// di inserimento manuale (vedi UI_DESIGN.md - sezione 3).
@@ -65,6 +66,10 @@ class HomeScreen extends ConsumerWidget {
               }
 
               return ListTile(
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => ExpenseDetailDialog(expense: expense, category: category),
+                ),
                 leading: CircleAvatar(
                   backgroundColor: category != null
                       ? categoryColor(category.color).withValues(alpha: 0.15)
