@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/formatters.dart';
 import '../../domain/category.dart';
 import '../../domain/expense.dart';
 import '../utils/category_visuals.dart';
@@ -12,12 +13,6 @@ class ExpenseDetailDialog extends StatelessWidget {
 
   final Expense expense;
   final ExpenseCategory? category;
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
-  }
 
   Future<void> _edit(BuildContext context) async {
     Navigator.of(context).pop();
@@ -68,7 +63,7 @@ class ExpenseDetailDialog extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text('Data: ${_formatDate(expense.date)}'),
+          Text('Data: ${formatDate(expense.date)}'),
           const SizedBox(height: 4),
           Text(
             'Importo: € ${expense.amount.toStringAsFixed(2)}',

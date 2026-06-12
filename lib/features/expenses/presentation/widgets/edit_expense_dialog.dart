@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/expense.dart';
 
@@ -30,8 +32,6 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
     _amountController.dispose();
     super.dispose();
   }
-
-  double? _parseAmount(String value) => double.tryParse(value.trim().replaceAll(',', '.'));
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -68,7 +68,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
       await ref.read(expenseRepositoryProvider).updateExpense(
             id: widget.expense.id,
             title: _titleController.text.trim(),
-            amount: _parseAmount(_amountController.text)!,
+            amount: parseAmount(_amountController.text)!,
           );
       ref.invalidate(recentExpensesProvider(widget.expense.budgetId));
       if (mounted) Navigator.of(context).pop();
@@ -104,7 +104,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
               decoration: const InputDecoration(labelText: 'Importo', prefixText: '€ '),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (value) {
-                final amount = _parseAmount(value ?? '');
+                final amount = parseAmount(value ?? '');
                 if (amount == null || amount <= 0) return 'Inserisci un importo valido';
                 return null;
               },
@@ -121,15 +121,11 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
           child: const Text('Annulla'),
         ),
-        FilledButton(
-          onPressed: _isSaving ? null : _save,
-          child: _isSaving
-              ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Salva'),
+        LoadingButton(
+          loading: _isSaving,
+          onPressed: _save,
+          spinnerSize: 16,
+          child: const Text('Salva'),
         ),
       ],
     );

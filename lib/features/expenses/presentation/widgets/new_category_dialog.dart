@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../utils/category_visuals.dart';
 
@@ -118,15 +119,11 @@ class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
           child: const Text('Annulla'),
         ),
-        FilledButton(
-          onPressed: _isSaving ? null : _save,
-          child: _isSaving
-              ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Crea'),
+        LoadingButton(
+          loading: _isSaving,
+          onPressed: _save,
+          spinnerSize: 16,
+          child: const Text('Crea'),
         ),
       ],
     );

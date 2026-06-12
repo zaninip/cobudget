@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/utils/error_message.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/supabase_budget_repository.dart';
 import '../../domain/budget.dart';
@@ -28,11 +28,6 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
     _nameController.dispose();
     _inviteCodeController.dispose();
     super.dispose();
-  }
-
-  String _errorMessage(Object error) {
-    if (error is PostgrestException) return error.message;
-    return 'Si è verificato un errore. Riprova.';
   }
 
   void _createBudget() {
@@ -100,7 +95,7 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
         },
         error: (error, _) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+              .showSnackBar(SnackBar(content: Text(errorMessage(error))));
         },
       );
     });

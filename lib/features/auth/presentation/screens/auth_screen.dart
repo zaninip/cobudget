@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/utils/error_message.dart';
+import '../../../../core/widgets/loading_button.dart';
 import '../controllers/auth_controller.dart';
 
 /// Schermata di accesso/registrazione (vedi UI_DESIGN.md - sezione 1).
@@ -47,11 +48,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
   }
 
-  String _errorMessage(Object error) {
-    if (error is AuthException) return error.message;
-    return 'Si è verificato un errore. Riprova.';
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
@@ -66,7 +62,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         },
         error: (error, _) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+              .showSnackBar(SnackBar(content: Text(errorMessage(error))));
         },
       );
     });
@@ -132,15 +128,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      child: FilledButton(
-                        onPressed: isLoading ? null : _submit,
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Continua'),
+                      child: LoadingButton(
+                        loading: isLoading,
+                        onPressed: _submit,
+                        child: const Text('Continua'),
                       ),
                     ),
                   ],

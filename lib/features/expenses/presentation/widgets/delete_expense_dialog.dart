@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/expense.dart';
 
@@ -77,16 +78,13 @@ class _DeleteExpenseDialogState extends ConsumerState<DeleteExpenseDialog> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
-        FilledButton(
-          onPressed: _isDeleting ? null : () => _delete(wholeGroup: false),
+        LoadingButton(
+          loading: _isDeleting,
+          onPressed: () => _delete(wholeGroup: false),
           style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-          child: _isDeleting
-              ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Text(isSpread ? 'Elimina solo questa' : 'Elimina'),
+          spinnerSize: 16,
+          spinnerColor: Colors.white,
+          child: Text(isSpread ? 'Elimina solo questa' : 'Elimina'),
         ),
       ],
     );

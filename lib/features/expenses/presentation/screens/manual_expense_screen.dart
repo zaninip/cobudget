@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/utils/error_message.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../controllers/manual_expense_controller.dart';
@@ -51,23 +53,8 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
 
   void _onTitleChanged() => setState(() {});
 
-  double? _parseAmount(String value) {
-    return double.tryParse(value.trim().replaceAll(',', '.'));
-  }
-
   int get _spreadMonthsCount =>
       (_endMonth.year - _startMonth.year) * 12 + (_endMonth.month - _startMonth.month) + 1;
-
-  String _errorMessage(Object error) {
-    if (error is PostgrestException) return error.message;
-    return 'Si è verificato un errore. Riprova.';
-  }
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
-  }
 
   Future<void> _addCategory() async {
     final category = await showDialog<ExpenseCategory>(
@@ -104,12 +91,6 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    if (_categoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleziona una categoria')),
-      );
-      return;
-    }
     if (_spreadEnabled && _spreadMonthsCount < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -120,7 +101,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
     }
 
     final title = _titleController.text.trim();
-    final amount = _parseAmount(_amountController.text)!;
+    final amount = parseAmount(_amountController.text)!;
     final controller = ref.read(manualExpenseControllerProvider.notifier);
 
     if (_spreadEnabled) {
@@ -154,7 +135,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
       next.whenOrNull(
         error: (error, _) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_errorMessage(error))));
+              .showSnackBar(SnackBar(content: Text(errorMessage(error))));
         },
       );
       if (previous is AsyncLoading && next is AsyncData) {
@@ -200,7 +181,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
             decoration: const InputDecoration(labelText: 'Importo', prefixText: '€ '),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: (value) {
-              final amount = _parseAmount(value ?? '');
+              final amount = parseAmount(value ?? '');
               if (amount == null || amount <= 0) return 'Inserisci un importo valido';
               return null;
             },
@@ -210,7 +191,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
             Card(
               child: ListTile(
                 title: const Text('Data'),
-                subtitle: Text(_formatDate(_date)),
+                subtitle: Text(formatDate(_date)),
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
@@ -309,15 +290,10 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
             ),
           ],
           const SizedBox(height: 24),
-          FilledButton(
-            onPressed: isSaving ? null : _save,
-            child: isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Salva'),
+          LoadingButton(
+            loading: isSaving,
+            onPressed: _save,
+            child: const Text('Salva'),
           ),
         ],
       ),

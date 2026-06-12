@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/formatters.dart';
 import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
@@ -14,12 +15,6 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key, required this.budgetId});
 
   final String budgetId;
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -79,7 +74,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 title: Text(expense.title),
-                subtitle: Text(_formatDate(expense.date)),
+                subtitle: Text(formatDate(expense.date)),
                 trailing: Text('€ ${expense.amount.toStringAsFixed(2)}'),
               );
             },
