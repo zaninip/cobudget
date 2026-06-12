@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../utils/category_visuals.dart';
 
 /// Dialog per la creazione di una nuova categoria (nome, icona, colore),
 /// vedi ARCHITECTURE.md - flow 4.
 class NewCategoryDialog extends ConsumerStatefulWidget {
-  const NewCategoryDialog({super.key});
+  const NewCategoryDialog({super.key, required this.budgetId});
+
+  final String budgetId;
 
   @override
   ConsumerState<NewCategoryDialog> createState() => _NewCategoryDialogState();
@@ -38,14 +39,13 @@ class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
     });
 
     try {
-      final budget = await ref.read(currentBudgetProvider.future);
       final category = await ref.read(expenseRepositoryProvider).createCategory(
-            budgetId: budget!.id,
+            budgetId: widget.budgetId,
             name: _nameController.text.trim(),
             icon: _selectedIcon,
             color: _selectedColor,
           );
-      final _ = await ref.refresh(expenseCategoriesProvider.future);
+      final _ = await ref.refresh(expenseCategoriesProvider(widget.budgetId).future);
       if (mounted) Navigator.of(context).pop(category);
     } catch (_) {
       setState(() {

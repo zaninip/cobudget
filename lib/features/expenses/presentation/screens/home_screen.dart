@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../utils/category_visuals.dart';
 import '../widgets/expense_detail_dialog.dart';
 
-/// Dashboard principale: budget corrente, ultime spese e accesso al form
-/// di inserimento manuale (vedi UI_DESIGN.md - sezione 3).
+/// Spese del budget selezionato e accesso al form di inserimento manuale
+/// (vedi UI_DESIGN.md - sezione 3).
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.budgetId});
+
+  final String budgetId;
 
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
@@ -22,26 +23,24 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final budget = ref.watch(currentBudgetProvider);
-    final expensesAsync = ref.watch(recentExpensesProvider);
-    final categoriesAsync = ref.watch(expenseCategoriesProvider);
+    final budget = ref.watch(budgetByIdProvider(budgetId));
+    final expensesAsync = ref.watch(recentExpensesProvider(budgetId));
+    final categoriesAsync = ref.watch(expenseCategoriesProvider(budgetId));
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'I tuoi budget',
+          onPressed: () => context.go('/'),
+        ),
         title: Text(
           budget.when(
-            data: (value) => value?.name ?? 'coBudget',
+            data: (value) => value.name,
             loading: () => 'coBudget',
             error: (_, _) => 'coBudget',
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Esci',
-            onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
-          ),
-        ],
       ),
       body: expensesAsync.when(
         data: (expenses) {
@@ -90,7 +89,7 @@ class HomeScreen extends ConsumerWidget {
         error: (error, _) => Center(child: Text('Errore nel caricamento delle spese: $error')),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/expenses/new'),
+        onPressed: () => context.push('/budget/$budgetId/expenses/new'),
         tooltip: 'Nuova spesa',
         child: const Icon(Icons.add),
       ),

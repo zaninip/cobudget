@@ -11,19 +11,25 @@ class SupabaseBudgetRepository implements BudgetRepository {
   final SupabaseClient _client;
 
   @override
-  Future<Budget?> getCurrentBudget() async {
+  Future<List<Budget>> getUserBudgets() async {
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) return null;
+    if (userId == null) return [];
 
-    final membership = await _client
+    final result = await _client
         .from('budget_members')
         .select('budgets(*)')
         .eq('user_id', userId)
-        .limit(1)
-        .maybeSingle();
+        .order('joined_at');
 
-    if (membership == null) return null;
-    return Budget.fromMap(membership['budgets'] as Map<String, dynamic>);
+    return (result as List)
+        .map((e) => Budget.fromMap(e['budgets'] as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<Budget> getBudgetById(String budgetId) async {
+    final result = await _client.from('budgets').select().eq('id', budgetId).single();
+    return Budget.fromMap(result);
   }
 
   @override
@@ -37,15 +43,26 @@ class SupabaseBudgetRepository implements BudgetRepository {
     final result = await _client.rpc('join_budget', params: {'p_invite_code': inviteCode});
     return Budget.fromMap(result as Map<String, dynamic>);
   }
+
+  @override
+  Future<void> leaveBudget(String budgetId) async {
+    final userId = _client.auth.currentUser!.id;
+    await _client.from('budget_members').delete().eq('budget_id', budgetId).eq('user_id', userId);
+  }
 }
 
 final budgetRepositoryProvider = Provider<BudgetRepository>((ref) {
   return SupabaseBudgetRepository(ref.watch(supabaseClientProvider));
 });
 
-/// Il budget dell'utente corrente, o `null` se non ne ha ancora uno.
+/// Tutti i budget di cui l'utente corrente è membro.
 /// Si ricalcola automaticamente ad ogni cambio di stato dell'autenticazione.
-final currentBudgetProvider = FutureProvider<Budget?>((ref) {
+final userBudgetsProvider = FutureProvider<List<Budget>>((ref) {
   ref.watch(authStateChangesProvider);
-  return ref.watch(budgetRepositoryProvider).getCurrentBudget();
+  return ref.watch(budgetRepositoryProvider).getUserBudgets();
+});
+
+/// Il budget con l'id indicato.
+final budgetByIdProvider = FutureProvider.family<Budget, String>((ref, budgetId) {
+  return ref.watch(budgetRepositoryProvider).getBudgetById(budgetId);
 });

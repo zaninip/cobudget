@@ -70,7 +70,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
             title: _titleController.text.trim(),
             amount: _parseAmount(_amountController.text)!,
           );
-      ref.invalidate(recentExpensesProvider);
+      ref.invalidate(recentExpensesProvider(widget.expense.budgetId));
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       setState(() {

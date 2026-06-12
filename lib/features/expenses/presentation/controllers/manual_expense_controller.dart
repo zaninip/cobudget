@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 
 /// Stato del salvataggio di una nuova spesa manuale (vedi ARCHITECTURE.md - flow 4).
@@ -11,6 +10,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
   FutureOr<void> build() {}
 
   Future<void> addExpense({
+    required String budgetId,
     required String title,
     required double amount,
     required DateTime date,
@@ -19,9 +19,8 @@ class ManualExpenseController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final budget = await ref.read(currentBudgetProvider.future);
       await ref.read(expenseRepositoryProvider).addExpense(
-            budgetId: budget!.id,
+            budgetId: budgetId,
             title: title,
             amount: amount,
             date: date,
@@ -30,11 +29,12 @@ class ManualExpenseController extends AsyncNotifier<void> {
           );
     });
     if (!state.hasError) {
-      ref.invalidate(recentExpensesProvider);
+      ref.invalidate(recentExpensesProvider(budgetId));
     }
   }
 
   Future<void> addSpreadExpenses({
+    required String budgetId,
     required String title,
     required double amount,
     required DateTime startMonth,
@@ -44,9 +44,8 @@ class ManualExpenseController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final budget = await ref.read(currentBudgetProvider.future);
       await ref.read(expenseRepositoryProvider).addSpreadExpenses(
-            budgetId: budget!.id,
+            budgetId: budgetId,
             title: title,
             amount: amount,
             startMonth: startMonth,
@@ -56,7 +55,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
           );
     });
     if (!state.hasError) {
-      ref.invalidate(recentExpensesProvider);
+      ref.invalidate(recentExpensesProvider(budgetId));
     }
   }
 }

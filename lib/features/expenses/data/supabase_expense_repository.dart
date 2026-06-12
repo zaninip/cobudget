@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/providers/supabase_provider.dart';
-import '../../budget/data/supabase_budget_repository.dart';
 import '../domain/category.dart';
 import '../domain/expense.dart';
 import '../domain/expense_repository.dart';
@@ -160,16 +159,12 @@ final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   return SupabaseExpenseRepository(ref.watch(supabaseClientProvider));
 });
 
-/// Categorie e sottocategorie disponibili per il budget corrente.
-final expenseCategoriesProvider = FutureProvider<List<ExpenseCategory>>((ref) async {
-  final budget = await ref.watch(currentBudgetProvider.future);
-  if (budget == null) return [];
-  return ref.watch(expenseRepositoryProvider).getCategories(budget.id);
-});
+/// Categorie e sottocategorie disponibili per il budget indicato.
+final expenseCategoriesProvider = FutureProvider.family<List<ExpenseCategory>, String>(
+  (ref, budgetId) => ref.watch(expenseRepositoryProvider).getCategories(budgetId),
+);
 
-/// Le spese più recenti del budget corrente.
-final recentExpensesProvider = FutureProvider<List<Expense>>((ref) async {
-  final budget = await ref.watch(currentBudgetProvider.future);
-  if (budget == null) return [];
-  return ref.watch(expenseRepositoryProvider).getRecentExpenses(budget.id);
-});
+/// Le spese del budget indicato, ordinate per data decrescente.
+final recentExpensesProvider = FutureProvider.family<List<Expense>, String>(
+  (ref, budgetId) => ref.watch(expenseRepositoryProvider).getRecentExpenses(budgetId),
+);

@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/supabase_budget_repository.dart';
 import '../../domain/budget.dart';
 
-/// Stato della creazione/accesso al budget (vedi ARCHITECTURE.md - flow 1).
-class BudgetSetupController extends AsyncNotifier<Budget?> {
+/// Stato della creazione/accesso a un budget dalla dashboard (vedi ARCHITECTURE.md - flow 1).
+class BudgetsDashboardController extends AsyncNotifier<Budget?> {
   @override
   FutureOr<Budget?> build() => null;
 
@@ -16,7 +16,7 @@ class BudgetSetupController extends AsyncNotifier<Budget?> {
       () => ref.read(budgetRepositoryProvider).createBudget(name),
     );
     if (!state.hasError) {
-      ref.invalidate(currentBudgetProvider);
+      ref.invalidate(userBudgetsProvider);
     }
   }
 
@@ -26,10 +26,10 @@ class BudgetSetupController extends AsyncNotifier<Budget?> {
       () => ref.read(budgetRepositoryProvider).joinBudget(inviteCode),
     );
     if (!state.hasError) {
-      ref.invalidate(currentBudgetProvider);
+      ref.invalidate(userBudgetsProvider);
     }
   }
 }
 
-final budgetSetupControllerProvider =
-    AsyncNotifierProvider<BudgetSetupController, Budget?>(BudgetSetupController.new);
+final budgetsDashboardControllerProvider =
+    AsyncNotifierProvider<BudgetsDashboardController, Budget?>(BudgetsDashboardController.new);

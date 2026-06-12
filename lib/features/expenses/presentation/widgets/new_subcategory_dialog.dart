@@ -6,8 +6,9 @@ import '../../data/supabase_expense_repository.dart';
 /// Dialog per la creazione di una nuova sottocategoria sotto [categoryId],
 /// vedi ARCHITECTURE.md - flow 4.
 class NewSubcategoryDialog extends ConsumerStatefulWidget {
-  const NewSubcategoryDialog({super.key, required this.categoryId});
+  const NewSubcategoryDialog({super.key, required this.budgetId, required this.categoryId});
 
+  final String budgetId;
   final String categoryId;
 
   @override
@@ -40,7 +41,7 @@ class _NewSubcategoryDialogState extends ConsumerState<NewSubcategoryDialog> {
             categoryId: widget.categoryId,
             name: _nameController.text.trim(),
           );
-      final _ = await ref.refresh(expenseCategoriesProvider.future);
+      final _ = await ref.refresh(expenseCategoriesProvider(widget.budgetId).future);
       if (mounted) Navigator.of(context).pop(subcategory);
     } catch (_) {
       setState(() {

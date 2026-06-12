@@ -33,7 +33,7 @@ class _DeleteExpenseDialogState extends ConsumerState<DeleteExpenseDialog> {
       } else {
         await repository.deleteExpense(widget.expense.id);
       }
-      ref.invalidate(recentExpensesProvider);
+      ref.invalidate(recentExpensesProvider(widget.expense.budgetId));
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       setState(() {

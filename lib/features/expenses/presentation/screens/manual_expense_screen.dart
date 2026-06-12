@@ -14,7 +14,9 @@ import '../widgets/new_subcategory_dialog.dart';
 /// Form di inserimento manuale di una spesa, con toggle "spalma su più mesi"
 /// (vedi ARCHITECTURE.md - flow 4, UI_DESIGN.md - sezione 5).
 class ManualExpenseScreen extends ConsumerStatefulWidget {
-  const ManualExpenseScreen({super.key});
+  const ManualExpenseScreen({super.key, required this.budgetId});
+
+  final String budgetId;
 
   @override
   ConsumerState<ManualExpenseScreen> createState() => _ManualExpenseScreenState();
@@ -70,7 +72,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
   Future<void> _addCategory() async {
     final category = await showDialog<ExpenseCategory>(
       context: context,
-      builder: (context) => const NewCategoryDialog(),
+      builder: (context) => NewCategoryDialog(budgetId: widget.budgetId),
     );
     if (category == null) return;
     setState(() {
@@ -82,7 +84,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
   Future<void> _addSubcategory(String categoryId) async {
     final subcategory = await showDialog<Subcategory>(
       context: context,
-      builder: (context) => NewSubcategoryDialog(categoryId: categoryId),
+      builder: (context) => NewSubcategoryDialog(budgetId: widget.budgetId, categoryId: categoryId),
     );
     if (subcategory == null) return;
     setState(() => _subcategoryId = subcategory.id);
@@ -123,6 +125,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
 
     if (_spreadEnabled) {
       controller.addSpreadExpenses(
+        budgetId: widget.budgetId,
         title: title,
         amount: amount,
         startMonth: _startMonth,
@@ -132,6 +135,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
       );
     } else {
       controller.addExpense(
+        budgetId: widget.budgetId,
         title: title,
         amount: amount,
         date: _date,
@@ -143,7 +147,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categoriesAsync = ref.watch(expenseCategoriesProvider);
+    final categoriesAsync = ref.watch(expenseCategoriesProvider(widget.budgetId));
     final saveState = ref.watch(manualExpenseControllerProvider);
 
     ref.listen<AsyncValue<void>>(manualExpenseControllerProvider, (previous, next) {

@@ -2,6 +2,7 @@
 class Expense {
   const Expense({
     required this.id,
+    required this.budgetId,
     required this.title,
     required this.amount,
     required this.date,
@@ -13,6 +14,7 @@ class Expense {
   factory Expense.fromMap(Map<String, dynamic> map) {
     return Expense(
       id: map['id'] as String,
+      budgetId: map['budget_id'] as String,
       title: map['title'] as String,
       amount: (map['amount'] as num).toDouble(),
       date: DateTime.parse(map['date'] as String),
@@ -23,6 +25,7 @@ class Expense {
   }
 
   final String id;
+  final String budgetId;
   final String title;
   final double amount;
   final DateTime date;
