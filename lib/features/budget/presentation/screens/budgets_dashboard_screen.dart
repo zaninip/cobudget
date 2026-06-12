@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/error_message.dart';
+import '../../../../core/widgets/error_dialog.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/supabase_budget_repository.dart';
 import '../../domain/budget.dart';
@@ -94,8 +95,7 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
           }
         },
         error: (error, _) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(errorMessage(error))));
+          showErrorDialog(context, errorMessage(error));
         },
       );
     });

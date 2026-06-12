@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/error_message.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/error_dialog.dart';
 import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
@@ -134,8 +135,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
     ref.listen<AsyncValue<void>>(manualExpenseControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, _) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(errorMessage(error))));
+          showErrorDialog(context, errorMessage(error));
         },
       );
       if (previous is AsyncLoading && next is AsyncData) {

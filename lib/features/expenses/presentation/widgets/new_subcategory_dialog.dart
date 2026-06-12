@@ -42,6 +42,8 @@ class _NewSubcategoryDialogState extends ConsumerState<NewSubcategoryDialog> {
             categoryId: widget.categoryId,
             name: _nameController.text.trim(),
           );
+      // refresh (e non invalidate) per attendere il ricaricamento: così la nuova
+      // sottocategoria è già nella lista quando lo schermo chiamante la preseleziona.
       final _ = await ref.refresh(expenseCategoriesProvider(widget.budgetId).future);
       if (mounted) Navigator.of(context).pop(subcategory);
     } catch (_) {

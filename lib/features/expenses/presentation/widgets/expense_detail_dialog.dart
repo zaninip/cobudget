@@ -15,17 +15,21 @@ class ExpenseDetailDialog extends StatelessWidget {
   final ExpenseCategory? category;
 
   Future<void> _edit(BuildContext context) async {
-    Navigator.of(context).pop();
+    // Cattura il Navigator prima del pop: dopo, `context` non è più nell'albero,
+    // mentre `navigator.context` resta valido per aprire il dialog successivo.
+    final navigator = Navigator.of(context);
+    navigator.pop();
     await showDialog<void>(
-      context: context,
+      context: navigator.context,
       builder: (_) => EditExpenseDialog(expense: expense),
     );
   }
 
   Future<void> _delete(BuildContext context) async {
-    Navigator.of(context).pop();
+    final navigator = Navigator.of(context);
+    navigator.pop();
     await showDialog<void>(
-      context: context,
+      context: navigator.context,
       builder: (_) => DeleteExpenseDialog(expense: expense),
     );
   }

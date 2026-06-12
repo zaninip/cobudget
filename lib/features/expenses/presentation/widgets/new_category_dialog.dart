@@ -46,6 +46,8 @@ class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
             icon: _selectedIcon,
             color: _selectedColor,
           );
+      // refresh (e non invalidate) per attendere il ricaricamento: così la nuova
+      // categoria è già nella lista quando lo schermo chiamante la preseleziona.
       final _ = await ref.refresh(expenseCategoriesProvider(widget.budgetId).future);
       if (mounted) Navigator.of(context).pop(category);
     } catch (_) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/error_message.dart';
+import '../../../../core/widgets/error_dialog.dart';
 import '../../../../core/widgets/loading_button.dart';
 import '../controllers/auth_controller.dart';
 
@@ -61,8 +62,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           }
         },
         error: (error, _) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(errorMessage(error))));
+          showErrorDialog(context, errorMessage(error));
         },
       );
     });
