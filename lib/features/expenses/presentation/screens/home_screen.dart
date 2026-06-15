@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/formatters.dart';
+import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
@@ -36,6 +37,18 @@ class HomeScreen extends ConsumerWidget {
             error: (_, _) => 'coBudget',
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Impostazioni budget',
+            onPressed: () => context.push('/budget/$budgetId/settings'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
+          ),
+        ],
       ),
       body: expensesAsync.when(
         data: (expenses) {

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/providers/supabase_provider.dart';
 import '../domain/budget.dart';
+import '../domain/budget_member.dart';
 import '../domain/budget_repository.dart';
 
 class SupabaseBudgetRepository implements BudgetRepository {
@@ -30,6 +31,14 @@ class SupabaseBudgetRepository implements BudgetRepository {
   Future<Budget> getBudgetById(String budgetId) async {
     final result = await _client.from('budgets').select().eq('id', budgetId).single();
     return Budget.fromMap(result);
+  }
+
+  @override
+  Future<List<BudgetMember>> getBudgetMembers(String budgetId) async {
+    final result = await _client.rpc('get_budget_members', params: {'p_budget_id': budgetId});
+    return (result as List)
+        .map((e) => BudgetMember.fromMap(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
@@ -65,4 +74,14 @@ final userBudgetsProvider = FutureProvider<List<Budget>>((ref) {
 /// Il budget con l'id indicato.
 final budgetByIdProvider = FutureProvider.family<Budget, String>((ref, budgetId) {
   return ref.watch(budgetRepositoryProvider).getBudgetById(budgetId);
+});
+
+/// I membri del budget con l'id indicato.
+///
+/// `autoDispose`: viene smaltito quando si lascia la schermata impostazioni, così
+/// alla riapertura rilegge i membri aggiornati invece di restituire la cache
+/// (es. un nuovo membro unitosi nel frattempo).
+final budgetMembersProvider =
+    FutureProvider.autoDispose.family<List<BudgetMember>, String>((ref, budgetId) {
+  return ref.watch(budgetRepositoryProvider).getBudgetMembers(budgetId);
 });

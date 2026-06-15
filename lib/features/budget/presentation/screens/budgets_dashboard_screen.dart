@@ -107,8 +107,13 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
         title: const Text('coBudget'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Impostazioni',
+            onPressed: () => context.push('/settings'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Esci',
+            tooltip: 'Logout',
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
         ],

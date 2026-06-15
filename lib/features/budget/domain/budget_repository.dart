@@ -1,4 +1,5 @@
 import 'budget.dart';
+import 'budget_member.dart';
 
 /// Astrazione sulla gestione dei budget condivisi (creazione/accesso tramite codice).
 abstract class BudgetRepository {
@@ -7,6 +8,9 @@ abstract class BudgetRepository {
 
   /// Il budget con l'id indicato (l'utente deve esserne membro).
   Future<Budget> getBudgetById(String budgetId);
+
+  /// I membri del budget indicato (l'utente deve esserne membro).
+  Future<List<BudgetMember>> getBudgetMembers(String budgetId);
 
   Future<Budget> createBudget(String name);
 

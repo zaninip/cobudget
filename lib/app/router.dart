@@ -5,6 +5,7 @@ import '../core/providers/supabase_provider.dart';
 import '../core/utils/go_router_refresh_stream.dart';
 import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/budget/presentation/screens/budgets_dashboard_screen.dart';
+import '../features/budget/presentation/screens/settings_screen.dart';
 import '../features/expenses/presentation/screens/home_screen.dart';
 import '../features/expenses/presentation/screens/manual_expense_screen.dart';
 
@@ -50,6 +51,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'expense-new',
         builder: (context, state) =>
             ManualExpenseScreen(budgetId: state.pathParameters['budgetId']!),
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/budget/:budgetId/settings',
+        name: 'budget-settings',
+        builder: (context, state) =>
+            SettingsScreen(budgetId: state.pathParameters['budgetId']!),
       ),
     ],
   );
