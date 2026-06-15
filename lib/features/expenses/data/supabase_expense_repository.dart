@@ -134,8 +134,15 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required String id,
     required String title,
     required double amount,
+    required String categoryId,
+    String? subcategoryId,
   }) async {
-    await _client.from('expenses').update({'title': title, 'amount': amount}).eq('id', id);
+    await _client.from('expenses').update({
+      'title': title,
+      'amount': amount,
+      'category_id': categoryId,
+      'subcategory_id': subcategoryId,
+    }).eq('id', id);
   }
 
   @override

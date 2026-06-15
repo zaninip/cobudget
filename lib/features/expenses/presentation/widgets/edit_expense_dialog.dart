@@ -5,6 +5,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/expense.dart';
+import 'category_selector.dart';
 
 /// Dialog per modificare titolo e importo di una spesa esistente.
 class EditExpenseDialog extends ConsumerStatefulWidget {
@@ -22,6 +23,9 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
   late final _amountController = TextEditingController(
     text: widget.expense.amount.toStringAsFixed(2),
   );
+
+  late String? _categoryId = widget.expense.categoryId;
+  late String? _subcategoryId = widget.expense.subcategoryId;
 
   bool _isSaving = false;
   String? _errorMessage;
@@ -69,6 +73,8 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
             id: widget.expense.id,
             title: _titleController.text.trim(),
             amount: parseAmount(_amountController.text)!,
+            categoryId: _categoryId!,
+            subcategoryId: _subcategoryId,
           );
       ref.invalidate(recentExpensesProvider(widget.expense.budgetId));
       if (mounted) Navigator.of(context).pop();
@@ -82,38 +88,61 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final categoriesAsync = ref.watch(expenseCategoriesProvider(widget.expense.budgetId));
+
     return AlertDialog(
       title: const Text('Modifica spesa'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Titolo'),
-              textCapitalization: TextCapitalization.sentences,
-              autofocus: true,
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty) ? 'Inserisci un titolo' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _amountController,
-              decoration: const InputDecoration(labelText: 'Importo', prefixText: '€ '),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (value) {
-                final amount = parseAmount(value ?? '');
-                if (amount == null || amount <= 0) return 'Inserisci un importo valido';
-                return null;
-              },
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Titolo'),
+                textCapitalization: TextCapitalization.sentences,
+                autofocus: true,
+                validator: (value) =>
+                    (value == null || value.trim().isEmpty) ? 'Inserisci un titolo' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _amountController,
+                decoration: const InputDecoration(labelText: 'Importo', prefixText: '€ '),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  final amount = parseAmount(value ?? '');
+                  if (amount == null || amount <= 0) return 'Inserisci un importo valido';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              categoriesAsync.when(
+                data: (categories) => CategorySelector(
+                  budgetId: widget.expense.budgetId,
+                  categories: categories,
+                  categoryId: _categoryId,
+                  subcategoryId: _subcategoryId,
+                  onCategoryChanged: (value) => setState(() {
+                    _categoryId = value;
+                    _subcategoryId = null;
+                  }),
+                  onSubcategoryChanged: (value) => setState(() => _subcategoryId = value),
+                ),
+                loading: () => const Center(child: Padding(
+                  padding: EdgeInsets.all(8),
+                  child: CircularProgressIndicator(),
+                )),
+                error: (error, _) => Text('Errore nel caricamento delle categorie: $error'),
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ],
             ],
-          ],
+          ),
         ),
       ),
       actions: [

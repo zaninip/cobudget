@@ -9,10 +9,8 @@ import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../controllers/manual_expense_controller.dart';
-import '../utils/category_visuals.dart';
+import '../widgets/category_selector.dart';
 import '../widgets/month_selector.dart';
-import '../widgets/new_category_dialog.dart';
-import '../widgets/new_subcategory_dialog.dart';
 
 /// Form di inserimento manuale di una spesa, con toggle "spalma su più mesi"
 /// (vedi ARCHITECTURE.md - flow 4, UI_DESIGN.md - sezione 5).
@@ -56,27 +54,6 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
 
   int get _spreadMonthsCount =>
       (_endMonth.year - _startMonth.year) * 12 + (_endMonth.month - _startMonth.month) + 1;
-
-  Future<void> _addCategory() async {
-    final category = await showDialog<ExpenseCategory>(
-      context: context,
-      builder: (context) => NewCategoryDialog(budgetId: widget.budgetId),
-    );
-    if (category == null) return;
-    setState(() {
-      _categoryId = category.id;
-      _subcategoryId = null;
-    });
-  }
-
-  Future<void> _addSubcategory(String categoryId) async {
-    final subcategory = await showDialog<Subcategory>(
-      context: context,
-      builder: (context) => NewSubcategoryDialog(budgetId: widget.budgetId, categoryId: categoryId),
-    );
-    if (subcategory == null) return;
-    setState(() => _subcategoryId = subcategory.id);
-  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -155,14 +132,6 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
   }
 
   Widget _buildForm(BuildContext context, List<ExpenseCategory> categories, bool isSaving) {
-    ExpenseCategory? selectedCategory;
-    for (final category in categories) {
-      if (category.id == _categoryId) {
-        selectedCategory = category;
-        break;
-      }
-    }
-
     return Form(
       key: _formKey,
       child: ListView(
@@ -229,66 +198,17 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
             _buildSpreadPreview(),
           ],
           const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _categoryId,
-                  decoration: const InputDecoration(labelText: 'Categoria'),
-                  items: [
-                    for (final category in categories)
-                      DropdownMenuItem(
-                        value: category.id,
-                        child: Row(
-                          children: [
-                            Icon(categoryIcon(category.icon), color: categoryColor(category.color), size: 20),
-                            const SizedBox(width: 8),
-                            Text(category.name),
-                          ],
-                        ),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() {
-                    _categoryId = value;
-                    _subcategoryId = null;
-                  }),
-                  validator: (value) => value == null ? 'Seleziona una categoria' : null,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'Nuova categoria',
-                onPressed: _addCategory,
-              ),
-            ],
+          CategorySelector(
+            budgetId: widget.budgetId,
+            categories: categories,
+            categoryId: _categoryId,
+            subcategoryId: _subcategoryId,
+            onCategoryChanged: (value) => setState(() {
+              _categoryId = value;
+              _subcategoryId = null;
+            }),
+            onSubcategoryChanged: (value) => setState(() => _subcategoryId = value),
           ),
-          if (selectedCategory != null) ...[
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String?>(
-                    key: ValueKey(_categoryId),
-                    initialValue: _subcategoryId,
-                    decoration: const InputDecoration(labelText: 'Sottocategoria'),
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('Nessuna')),
-                      for (final subcategory in selectedCategory.subcategories)
-                        DropdownMenuItem(value: subcategory.id, child: Text(subcategory.name)),
-                    ],
-                    onChanged: (value) => setState(() => _subcategoryId = value),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: 'Nuova sottocategoria',
-                  onPressed: () => _addSubcategory(selectedCategory!.id),
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: 24),
           LoadingButton(
             loading: isSaving,

@@ -46,11 +46,13 @@ abstract class ExpenseRepository {
     required String name,
   });
 
-  /// Aggiorna titolo e importo di una spesa esistente.
+  /// Aggiorna titolo, importo, categoria e sottocategoria di una spesa esistente.
   Future<void> updateExpense({
     required String id,
     required String title,
     required double amount,
+    required String categoryId,
+    String? subcategoryId,
   });
 
   /// Elimina una singola spesa.
