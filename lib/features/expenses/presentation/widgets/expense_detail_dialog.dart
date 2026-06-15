@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/amount_text.dart';
 import '../../domain/category.dart';
 import '../../domain/expense.dart';
 import '../utils/category_visuals.dart';
@@ -68,10 +69,17 @@ class ExpenseDetailDialog extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text('Data: ${formatDate(expense.date)}'),
-          const SizedBox(height: 4),
-          Text(
-            'Importo: € ${expense.amount.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.titleMedium,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                'Importo: ',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              AmountText(expense.amount, fontSize: 20, color: Theme.of(context).colorScheme.primary),
+            ],
           ),
           if (expense.spreadGroupId != null) ...[
             const SizedBox(height: 12),

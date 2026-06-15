@@ -68,6 +68,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     });
 
     final isLoading = authState.isLoading;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Scaffold(
       body: SafeArea(
@@ -81,20 +83,63 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.account_balance_wallet,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [scheme.primary, scheme.primaryContainer],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: scheme.primary.withValues(alpha: 0.45),
+                            blurRadius: 26,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.account_balance_wallet,
+                        size: 38,
+                        color: scheme.onPrimary,
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text('coBudget', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 24),
-                    TabBar(
-                      controller: _tabController,
-                      tabs: const [
-                        Tab(text: 'Accedi'),
-                        Tab(text: 'Registrati'),
-                      ],
+                    const SizedBox(height: 16),
+                    Text('coBudget', style: theme.textTheme.headlineSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Gestisci le spese condivise',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: scheme.outline),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: scheme.onPrimary,
+                        unselectedLabelColor: scheme.onSurfaceVariant,
+                        splashBorderRadius: BorderRadius.circular(10),
+                        tabs: const [
+                          Tab(text: 'Accedi'),
+                          Tab(text: 'Registrati'),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     TextFormField(

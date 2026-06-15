@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/amount_text.dart';
+import '../../../../core/widgets/app_bar_icon_button.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
+import '../../domain/expense.dart';
 import '../utils/category_visuals.dart';
 import '../widgets/expense_detail_dialog.dart';
 
@@ -25,11 +28,12 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        leading: AppBarIconButton(
+          icon: Icons.arrow_back,
           tooltip: 'I tuoi budget',
           onPressed: () => context.go('/'),
         ),
+        leadingWidth: 56,
         title: Text(
           budget.when(
             data: (value) => value.name,
@@ -38,68 +42,183 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
+          AppBarIconButton(
+            icon: Icons.settings_outlined,
             tooltip: 'Impostazioni budget',
             onPressed: () => context.push('/budget/$budgetId/settings'),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
+          AppBarIconButton(
+            icon: Icons.logout,
             tooltip: 'Logout',
+            color: Theme.of(context).colorScheme.error,
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: expensesAsync.when(
         data: (expenses) {
-          if (expenses.isEmpty) {
-            return const Center(child: Text('Nessuna spesa registrata'));
-          }
+          final categories = categoriesAsync.value ?? const [];
+          final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);
 
-          final categories = categoriesAsync.value ?? [];
-
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: expenses.length,
-            itemBuilder: (context, index) {
-              final expense = expenses[index];
-
-              ExpenseCategory? category;
-              for (final c in categories) {
-                if (c.id == expense.categoryId) {
-                  category = c;
-                  break;
-                }
-              }
-
-              return ListTile(
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => ExpenseDetailDialog(expense: expense, category: category),
-                ),
-                leading: CircleAvatar(
-                  backgroundColor: category != null
-                      ? categoryColor(category.color).withValues(alpha: 0.15)
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    category != null ? categoryIcon(category.icon) : Icons.category,
-                    color: category != null ? categoryColor(category.color) : null,
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+            children: [
+              _TotalCard(total: total, count: expenses.length),
+              const SizedBox(height: 24),
+              Text('Ultime spese', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              if (expenses.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'Nessuna spesa registrata',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
-                ),
-                title: Text(expense.title),
-                subtitle: Text(formatDate(expense.date)),
-                trailing: Text('€ ${expense.amount.toStringAsFixed(2)}'),
-              );
-            },
+                )
+              else
+                for (final expense in expenses) ...[
+                  _ExpenseTile(
+                    expense: expense,
+                    category: _categoryFor(categories, expense.categoryId),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+            ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Errore nel caricamento delle spese: $error')),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/budget/$budgetId/expenses/new'),
-        tooltip: 'Nuova spesa',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Nuova spesa'),
+      ),
+    );
+  }
+
+  ExpenseCategory? _categoryFor(List<ExpenseCategory> categories, String categoryId) {
+    for (final c in categories) {
+      if (c.id == categoryId) return c;
+    }
+    return null;
+  }
+}
+
+/// Card di riepilogo con il totale delle spese in evidenza (Space Grotesk).
+class _TotalCard extends StatelessWidget {
+  const _TotalCard({required this.total, required this.count});
+
+  final double total;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [scheme.primary, scheme.primaryContainer],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withValues(alpha: 0.35),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Totale spese',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: scheme.onPrimary.withValues(alpha: 0.85),
+                ),
+          ),
+          const SizedBox(height: 8),
+          AmountText(total, fontSize: 40, color: scheme.onPrimary),
+          const SizedBox(height: 4),
+          Text(
+            count == 1 ? '1 spesa registrata' : '$count spese registrate',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onPrimary.withValues(alpha: 0.85),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Voce della lista spese: icona categoria, titolo, data e importo.
+class _ExpenseTile extends StatelessWidget {
+  const _ExpenseTile({required this.expense, required this.category});
+
+  final Expense expense;
+  final ExpenseCategory? category;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = category != null ? categoryColor(category!.color) : scheme.primary;
+
+    return Card(
+      child: InkWell(
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (_) => ExpenseDetailDialog(expense: expense, category: category),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  category != null ? categoryIcon(category!.icon) : Icons.category_outlined,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      expense.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      category != null ? '${category!.name} · ${formatDate(expense.date)}' : formatDate(expense.date),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              AmountText(expense.amount, fontSize: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

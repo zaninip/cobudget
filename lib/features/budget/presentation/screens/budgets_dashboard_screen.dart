@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/error_message.dart';
-import '../../../../core/widgets/error_dialog.dart';
+import '../../../../core/widgets/app_bar_icon_button.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../data/supabase_budget_repository.dart';
 import '../../domain/budget.dart';
-import '../controllers/budgets_dashboard_controller.dart';
+import '../widgets/budget_form_dialogs.dart';
 
 /// Schermata iniziale: crea/unisciti a un budget e accedi a quelli esistenti
 /// (vedi UI_DESIGN.md - sezione 2 e ARCHITECTURE.md - flow 1).
@@ -19,30 +18,20 @@ class BudgetsDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen> {
-  final _createFormKey = GlobalKey<FormState>();
-  final _joinFormKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _inviteCodeController = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _inviteCodeController.dispose();
-    super.dispose();
+  Future<void> _openCreate() async {
+    final budget = await showDialog<Budget>(
+      context: context,
+      builder: (_) => const CreateBudgetDialog(),
+    );
+    if (budget != null && mounted) context.go('/budget/${budget.id}');
   }
 
-  void _createBudget() {
-    if (!_createFormKey.currentState!.validate()) return;
-    ref
-        .read(budgetsDashboardControllerProvider.notifier)
-        .createBudget(_nameController.text.trim());
-  }
-
-  void _joinBudget() {
-    if (!_joinFormKey.currentState!.validate()) return;
-    ref
-        .read(budgetsDashboardControllerProvider.notifier)
-        .joinBudget(_inviteCodeController.text.trim());
+  Future<void> _openJoin() async {
+    final budget = await showDialog<Budget>(
+      context: context,
+      builder: (_) => const JoinBudgetDialog(),
+    );
+    if (budget != null && mounted) context.go('/budget/${budget.id}');
   }
 
   Future<void> _leaveBudget(Budget budget) async {
@@ -82,40 +71,25 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final dashboardState = ref.watch(budgetsDashboardControllerProvider);
     final budgetsAsync = ref.watch(userBudgetsProvider);
-
-    ref.listen<AsyncValue<Budget?>>(budgetsDashboardControllerProvider, (previous, next) {
-      next.whenOrNull(
-        data: (budget) {
-          if (budget != null) {
-            _nameController.clear();
-            _inviteCodeController.clear();
-            context.go('/budget/${budget.id}');
-          }
-        },
-        error: (error, _) {
-          showErrorDialog(context, errorMessage(error));
-        },
-      );
-    });
-
-    final isLoading = dashboardState.isLoading;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('coBudget'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
+          AppBarIconButton(
+            icon: Icons.settings_outlined,
             tooltip: 'Impostazioni',
             onPressed: () => context.push('/settings'),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
+          AppBarIconButton(
+            icon: Icons.logout,
             tooltip: 'Logout',
+            color: theme.colorScheme.error,
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
@@ -123,113 +97,46 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Form(
-                      key: _createFormKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text('Crea nuovo budget', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Crea un budget e ottieni un codice da condividere',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(labelText: 'Nome budget'),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Inserisci un nome';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: isLoading ? null : _createBudget,
-                            child: const Text('Crea'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                _ActionCard(
+                  title: 'Crea nuovo budget',
+                  subtitle: 'Crea un budget e ottieni un codice condivisibile',
+                  icon: Icons.add,
+                  primary: true,
+                  onTap: _openCreate,
                 ),
                 const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Form(
-                      key: _joinFormKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text('Unisciti con codice', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Accedi a un budget esistente',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _inviteCodeController,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(labelText: 'Codice invito'),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Inserisci un codice';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: isLoading ? null : _joinBudget,
-                            child: const Text('Unisciti'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                _ActionCard(
+                  title: 'Unisciti con codice',
+                  subtitle: 'Accedi a un budget esistente',
+                  icon: Icons.vpn_key_outlined,
+                  primary: false,
+                  onTap: _openJoin,
                 ),
-                if (isLoading) ...[
-                  const SizedBox(height: 16),
-                  const Center(child: CircularProgressIndicator()),
-                ],
-                const SizedBox(height: 24),
-                Text('I tuoi budget', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
+                const SizedBox(height: 28),
+                Text('I tuoi budget', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
                 budgetsAsync.when(
                   data: (budgets) {
                     if (budgets.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          'Non sei ancora membro di nessun budget. Crea o unisciti a uno per iniziare.',
+                      return Text(
+                        'Non sei ancora membro di nessun budget. Crea o unisciti a uno per iniziare.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       );
                     }
                     return Column(
                       children: [
-                        for (final budget in budgets)
-                          Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.account_balance_wallet_outlined),
-                              title: Text(budget.name),
-                              subtitle: Text('Codice: ${budget.inviteCode}'),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                tooltip: 'Esci dal budget',
-                                onPressed: () => _leaveBudget(budget),
-                              ),
-                              onTap: () => context.go('/budget/${budget.id}'),
-                            ),
+                        for (final budget in budgets) ...[
+                          _BudgetTile(
+                            budget: budget,
+                            onTap: () => context.go('/budget/${budget.id}'),
+                            onLeave: () => _leaveBudget(budget),
                           ),
+                          const SizedBox(height: 12),
+                        ],
                       ],
                     );
                   },
@@ -238,6 +145,159 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card "call to action" con titolo, sottotitolo e pulsante icona a destra.
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+    required this.primary,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              _IconBadge(icon: icon, primary: primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Riquadro icona: pieno con glow per l'azione primaria, tonale per le altre.
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon, required this.primary});
+
+  final IconData icon;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: primary
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [scheme.primary, scheme.primaryContainer],
+              )
+            : null,
+        color: primary ? null : scheme.surfaceContainerHighest,
+        border: primary ? null : Border.all(color: scheme.outline),
+        boxShadow: primary
+            ? [
+                BoxShadow(
+                  color: scheme.primary.withValues(alpha: 0.45),
+                  blurRadius: 22,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
+      ),
+      child: Icon(
+        icon,
+        size: 28,
+        color: primary ? scheme.onPrimary : scheme.primary,
+      ),
+    );
+  }
+}
+
+/// Voce della lista "I tuoi budget".
+class _BudgetTile extends StatelessWidget {
+  const _BudgetTile({required this.budget, required this.onTap, required this.onLeave});
+
+  final Budget budget;
+  final VoidCallback onTap;
+  final VoidCallback onLeave;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(budget.name, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Codice: ${budget.inviteCode}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Esci dal budget',
+                onPressed: onLeave,
+              ),
+            ],
           ),
         ),
       ),
