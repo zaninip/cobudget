@@ -8,6 +8,7 @@ import '../../../../core/widgets/error_dialog.dart';
 import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
+import '../../domain/expense.dart';
 import '../controllers/manual_expense_controller.dart';
 import '../widgets/category_selector.dart';
 import '../widgets/month_selector.dart';
@@ -35,6 +36,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
 
   String? _categoryId;
   String? _subcategoryId;
+  ExpenseType _type = ExpenseType.expense;
 
   @override
   void initState() {
@@ -91,6 +93,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         endMonth: _endMonth,
         categoryId: _categoryId!,
         subcategoryId: _subcategoryId,
+        type: _type,
       );
     } else {
       controller.addExpense(
@@ -100,6 +103,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         date: _date,
         categoryId: _categoryId!,
         subcategoryId: _subcategoryId,
+        type: _type,
       );
     }
   }
@@ -121,7 +125,9 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuova spesa')),
+      appBar: AppBar(
+        title: Text(_type == ExpenseType.income ? 'Nuova entrata' : 'Nuova uscita'),
+      ),
       body: categoriesAsync.when(
         data: (categories) => _buildForm(context, categories, saveState.isLoading),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -137,6 +143,23 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          SegmentedButton<ExpenseType>(
+            segments: const [
+              ButtonSegment(
+                value: ExpenseType.expense,
+                label: Text('Uscita'),
+                icon: Icon(Icons.south_west),
+              ),
+              ButtonSegment(
+                value: ExpenseType.income,
+                label: Text('Entrata'),
+                icon: Icon(Icons.north_east),
+              ),
+            ],
+            selected: {_type},
+            onSelectionChanged: (selection) => setState(() => _type = selection.first),
+          ),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _titleController,
             decoration: const InputDecoration(labelText: 'Titolo'),

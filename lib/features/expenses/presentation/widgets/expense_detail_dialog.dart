@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/amount_text.dart';
 import '../../domain/category.dart';
@@ -78,7 +79,14 @@ class ExpenseDetailDialog extends StatelessWidget {
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
-              AmountText(expense.amount, fontSize: 20, color: Theme.of(context).colorScheme.primary),
+              AmountText(
+                expense.amount,
+                fontSize: 20,
+                fontWeight: expense.isIncome ? FontWeight.w800 : FontWeight.w700,
+                color: expense.isIncome
+                    ? context.appColors.success
+                    : Theme.of(context).colorScheme.primary,
+              ),
             ],
           ),
           if (expense.spreadGroupId != null) ...[

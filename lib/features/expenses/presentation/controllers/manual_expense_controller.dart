@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/supabase_expense_repository.dart';
+import '../../domain/expense.dart';
 
 /// Stato del salvataggio di una nuova spesa manuale (vedi ARCHITECTURE.md - flow 4).
 class ManualExpenseController extends AsyncNotifier<void> {
@@ -16,6 +17,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
     required DateTime date,
     required String categoryId,
     String? subcategoryId,
+    ExpenseType type = ExpenseType.expense,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -26,6 +28,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
             date: date,
             categoryId: categoryId,
             subcategoryId: subcategoryId,
+            type: type,
           );
     });
     if (!state.hasError) {
@@ -41,6 +44,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
     required DateTime endMonth,
     required String categoryId,
     String? subcategoryId,
+    ExpenseType type = ExpenseType.expense,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -52,6 +56,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
             endMonth: endMonth,
             categoryId: categoryId,
             subcategoryId: subcategoryId,
+            type: type,
           );
     });
     if (!state.hasError) {

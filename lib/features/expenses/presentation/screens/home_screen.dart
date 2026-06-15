@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_bar_icon_button.dart';
@@ -59,20 +60,53 @@ class HomeScreen extends ConsumerWidget {
       body: expensesAsync.when(
         data: (expenses) {
           final categories = categoriesAsync.value ?? const [];
-          final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);
+          final now = DateTime.now();
+          bool isCurrentMonth(DateTime d) => d.year == now.year && d.month == now.month;
+
+          var monthExpenses = 0.0;
+          var monthIncome = 0.0;
+          for (final e in expenses) {
+            if (!isCurrentMonth(e.date)) continue;
+            if (e.isIncome) {
+              monthIncome += e.amount;
+            } else {
+              monthExpenses += e.amount;
+            }
+          }
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
             children: [
-              _TotalCard(total: total, count: expenses.length),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _SummaryCard(
+                        label: 'Uscite mese corrente',
+                        amount: monthExpenses,
+                        accent: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _SummaryCard(
+                        label: 'Entrate mese corrente',
+                        amount: monthIncome,
+                        accent: context.appColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
-              Text('Ultime spese', style: Theme.of(context).textTheme.titleMedium),
+              Text('Ultimi movimenti', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               if (expenses.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Text(
-                    'Nessuna spesa registrata',
+                    'Nessun movimento registrato',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -108,50 +142,54 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Card di riepilogo con il totale delle spese in evidenza (Space Grotesk).
-class _TotalCard extends StatelessWidget {
-  const _TotalCard({required this.total, required this.count});
+/// Card di riepilogo (uscite/entrate del mese) con importo in evidenza.
+/// Il colore del testo si adatta alla luminosità dell'accento per restare
+/// leggibile sia in tema chiaro che scuro.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.label, required this.amount, required this.accent});
 
-  final double total;
-  final int count;
+  final String label;
+  final double amount;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final onAccent =
+        accent.computeLuminance() > 0.5 ? const Color(0xFF1A1A1A) : Colors.white;
+    final accentEnd = Color.lerp(accent, Colors.black, 0.22)!;
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [scheme.primary, scheme.primaryContainer],
+          colors: [accent, accentEnd],
         ),
         boxShadow: [
           BoxShadow(
-            color: scheme.primary.withValues(alpha: 0.35),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
+            color: accent.withValues(alpha: 0.32),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Totale spese',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: scheme.onPrimary.withValues(alpha: 0.85),
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: onAccent.withValues(alpha: 0.9),
                 ),
           ),
-          const SizedBox(height: 8),
-          AmountText(total, fontSize: 40, color: scheme.onPrimary),
-          const SizedBox(height: 4),
-          Text(
-            count == 1 ? '1 spesa registrata' : '$count spese registrate',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onPrimary.withValues(alpha: 0.85),
-                ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AmountText(amount, fontSize: 26, color: onAccent),
           ),
         ],
       ),
@@ -215,7 +253,12 @@ class _ExpenseTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              AmountText(expense.amount, fontSize: 16),
+              AmountText(
+                expense.amount,
+                fontSize: 16,
+                fontWeight: expense.isIncome ? FontWeight.w800 : FontWeight.w700,
+                color: expense.isIncome ? context.appColors.success : null,
+              ),
             ],
           ),
         ),

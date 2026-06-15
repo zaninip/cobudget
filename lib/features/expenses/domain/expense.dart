@@ -1,4 +1,13 @@
-/// Una spesa salvata nel budget (vedi DATABASE_SCHEMA.md).
+/// Tipo di movimento: uscita (spesa) o entrata.
+enum ExpenseType {
+  expense,
+  income;
+
+  static ExpenseType fromName(String? value) =>
+      value == 'income' ? ExpenseType.income : ExpenseType.expense;
+}
+
+/// Una voce salvata nel budget: uscita o entrata (vedi DATABASE_SCHEMA.md).
 class Expense {
   const Expense({
     required this.id,
@@ -9,6 +18,7 @@ class Expense {
     required this.categoryId,
     this.subcategoryId,
     this.spreadGroupId,
+    this.type = ExpenseType.expense,
   });
 
   factory Expense.fromMap(Map<String, dynamic> map) {
@@ -21,6 +31,7 @@ class Expense {
       categoryId: map['category_id'] as String,
       subcategoryId: map['subcategory_id'] as String?,
       spreadGroupId: map['spread_group_id'] as String?,
+      type: ExpenseType.fromName(map['type'] as String?),
     );
   }
 
@@ -32,4 +43,7 @@ class Expense {
   final String categoryId;
   final String? subcategoryId;
   final String? spreadGroupId;
+  final ExpenseType type;
+
+  bool get isIncome => type == ExpenseType.income;
 }

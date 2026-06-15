@@ -47,6 +47,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required DateTime date,
     required String categoryId,
     String? subcategoryId,
+    ExpenseType type = ExpenseType.expense,
   }) async {
     await _client.from('expenses').insert({
       'budget_id': budgetId,
@@ -56,6 +57,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
       'date': _formatDate(date),
       'category_id': categoryId,
       'subcategory_id': subcategoryId,
+      'type': type.name,
     });
   }
 
@@ -68,6 +70,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required DateTime endMonth,
     required String categoryId,
     String? subcategoryId,
+    ExpenseType type = ExpenseType.expense,
   }) async {
     final months = <DateTime>[];
     var current = DateTime(startMonth.year, startMonth.month);
@@ -93,6 +96,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
           'category_id': categoryId,
           'subcategory_id': subcategoryId,
           'spread_group_id': spreadGroupId,
+          'type': type.name,
         },
     ];
 

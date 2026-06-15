@@ -10,7 +10,7 @@ abstract class ExpenseRepository {
   /// Tutte le spese del budget, ordinate per data decrescente.
   Future<List<Expense>> getRecentExpenses(String budgetId);
 
-  /// Crea una singola spesa in data [date].
+  /// Crea una singola voce (uscita o entrata) in data [date].
   Future<void> addExpense({
     required String budgetId,
     required String title,
@@ -18,9 +18,10 @@ abstract class ExpenseRepository {
     required DateTime date,
     required String categoryId,
     String? subcategoryId,
+    ExpenseType type = ExpenseType.expense,
   });
 
-  /// Crea N spese (una per ogni mese tra [startMonth] e [endMonth] inclusi),
+  /// Crea N voci (una per ogni mese tra [startMonth] e [endMonth] inclusi),
   /// con titoli "Titolo i/N" e lo stesso `spread_group_id`.
   Future<void> addSpreadExpenses({
     required String budgetId,
@@ -30,6 +31,7 @@ abstract class ExpenseRepository {
     required DateTime endMonth,
     required String categoryId,
     String? subcategoryId,
+    ExpenseType type = ExpenseType.expense,
   });
 
   /// Crea una nuova categoria specifica del budget [budgetId].
