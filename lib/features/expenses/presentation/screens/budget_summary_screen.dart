@@ -35,20 +35,10 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
   final Set<String> _subcategoryIds = {};
   int _tabIndex = 0;
 
-  // Stato scheda "Andamento".
-  TrendGranularity? _granularityOverride;
+  // Stato scheda "Andamento". L'andamento è sempre su base mensile.
   bool _showOutcome = true;
   bool _showIncome = true;
   bool _showBalance = false;
-
-  TrendGranularity get _granularity {
-    if (_granularityOverride != null) return _granularityOverride!;
-    if (_period == SummaryPeriod.custom && _customStart != null && _customEnd != null) {
-      final days = _customEnd!.difference(_customStart!).inDays;
-      return days <= 80 ? TrendGranularity.week : TrendGranularity.month;
-    }
-    return defaultGranularityFor(_period);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,13 +112,12 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
                 _TrendTab(
                   expenses: filtered,
                   period: _period,
-                  granularity: _granularity,
+                  granularity: TrendGranularity.month,
                   customStart: _customStart,
                   customEnd: _customEnd,
                   showOutcome: _showOutcome,
                   showIncome: _showIncome,
                   showBalance: _showBalance,
-                  onGranularityChanged: (g) => setState(() => _granularityOverride = g),
                   onShowOutcomeChanged: (v) => setState(() => _showOutcome = v),
                   onShowIncomeChanged: (v) => setState(() => _showIncome = v),
                   onShowBalanceChanged: (v) => setState(() => _showBalance = v),
@@ -186,10 +175,7 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
               ],
               onChanged: (value) {
                 if (value != null) {
-                  setState(() {
-                    _period = value;
-                    _granularityOverride = null;
-                  });
+                  setState(() => _period = value);
                 }
               },
             ),
@@ -531,7 +517,6 @@ class _TrendTab extends StatelessWidget {
     required this.showOutcome,
     required this.showIncome,
     required this.showBalance,
-    required this.onGranularityChanged,
     required this.onShowOutcomeChanged,
     required this.onShowIncomeChanged,
     required this.onShowBalanceChanged,
@@ -545,7 +530,6 @@ class _TrendTab extends StatelessWidget {
   final bool showOutcome;
   final bool showIncome;
   final bool showBalance;
-  final ValueChanged<TrendGranularity> onGranularityChanged;
   final ValueChanged<bool> onShowOutcomeChanged;
   final ValueChanged<bool> onShowIncomeChanged;
   final ValueChanged<bool> onShowBalanceChanged;
@@ -566,15 +550,6 @@ class _TrendTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SegmentedButton<TrendGranularity>(
-          segments: const [
-            ButtonSegment(value: TrendGranularity.week, label: Text('Settimana')),
-            ButtonSegment(value: TrendGranularity.month, label: Text('Mese')),
-          ],
-          selected: {granularity},
-          onSelectionChanged: (s) => onGranularityChanged(s.first),
-        ),
-        const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           children: [

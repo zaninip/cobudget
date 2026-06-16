@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/utils/formatters.dart';
 import '../utils/expense_summary.dart';
 
 /// Grafico a barre raggruppate dell'andamento nel tempo: uscite (viola) ed
@@ -68,6 +69,14 @@ class SummaryTrendChart extends StatelessWidget {
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipColor: (_) => scheme.surfaceContainerHighest,
                       tooltipBorder: BorderSide(color: scheme.outline),
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                        formatCurrency(rod.toY),
+                        TextStyle(
+                          color: scheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                   gridData: FlGridData(
