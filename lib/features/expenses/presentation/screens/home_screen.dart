@@ -44,6 +44,11 @@ class HomeScreen extends ConsumerWidget {
         ),
         actions: [
           AppBarIconButton(
+            icon: Icons.insights_outlined,
+            tooltip: 'Riepilogo',
+            onPressed: () => context.push('/budget/$budgetId/summary'),
+          ),
+          AppBarIconButton(
             icon: Icons.settings_outlined,
             tooltip: 'Impostazioni budget',
             onPressed: () => context.push('/budget/$budgetId/settings'),
