@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/extraction_model_controller.dart';
 import '../../../../app/theme_mode_controller.dart';
 import '../../data/supabase_budget_repository.dart';
 import '../../domain/budget_member.dart';
@@ -17,6 +18,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeControllerProvider);
+    final extractionModel = ref.watch(extractionModelControllerProvider);
     final budgetId = this.budgetId;
 
     final budget = budgetId != null ? ref.watch(budgetByIdProvider(budgetId)) : null;
@@ -60,6 +62,14 @@ class SettingsScreen extends ConsumerWidget {
                   themeMode: themeMode,
                   onChanged: (mode) =>
                       ref.read(themeModeControllerProvider.notifier).setThemeMode(mode),
+                ),
+                const SizedBox(height: 24),
+                const _SectionTitle('Modello di estrazione'),
+                const SizedBox(height: 8),
+                _ExtractionModelSelector(
+                  model: extractionModel,
+                  onChanged: (model) =>
+                      ref.read(extractionModelControllerProvider.notifier).setModel(model),
                 ),
               ],
             ),
@@ -177,6 +187,48 @@ class _ThemeSelector extends StatelessWidget {
       ],
       selected: {effective},
       onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+/// Selettore del modello usato per leggere gli screenshot delle spese.
+/// "Standard" = piu' economico, "Performante" = piu' accurato.
+class _ExtractionModelSelector extends StatelessWidget {
+  const _ExtractionModelSelector({required this.model, required this.onChanged});
+
+  final ExtractionModel model;
+  final ValueChanged<ExtractionModel> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<ExtractionModel>(
+          segments: const [
+            ButtonSegment(
+              value: ExtractionModel.standard,
+              label: Text('Standard'),
+              icon: Icon(Icons.bolt_outlined),
+            ),
+            ButtonSegment(
+              value: ExtractionModel.performante,
+              label: Text('Performante'),
+              icon: Icon(Icons.auto_awesome_outlined),
+            ),
+          ],
+          selected: {model},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Usato per leggere le spese dagli screenshot. '
+          'Standard = piu’ economico, Performante = piu’ accurato sugli screenshot difficili.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      ],
     );
   }
 }

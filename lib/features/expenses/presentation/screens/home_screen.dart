@@ -131,10 +131,26 @@ class HomeScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Errore nel caricamento delle spese: $error')),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/budget/$budgetId/expenses/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Nuova spesa'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'import',
+            onPressed: () => context.push('/budget/$budgetId/import'),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            foregroundColor: Theme.of(context).colorScheme.onSecondary,
+            icon: const Icon(Icons.document_scanner_outlined),
+            label: const Text('Da screenshot'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'manual',
+            onPressed: () => context.push('/budget/$budgetId/expenses/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Nuova spesa'),
+          ),
+        ],
       ),
     );
   }

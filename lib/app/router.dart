@@ -9,6 +9,7 @@ import '../features/budget/presentation/screens/settings_screen.dart';
 import '../features/expenses/presentation/screens/budget_summary_screen.dart';
 import '../features/expenses/presentation/screens/home_screen.dart';
 import '../features/expenses/presentation/screens/manual_expense_screen.dart';
+import '../features/screenshot/presentation/screens/screenshot_import_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
@@ -58,6 +59,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'expense-new',
         builder: (context, state) =>
             ManualExpenseScreen(budgetId: state.pathParameters['budgetId']!),
+      ),
+      GoRoute(
+        path: '/budget/:budgetId/import',
+        name: 'expense-import',
+        builder: (context, state) =>
+            ScreenshotImportScreen(budgetId: state.pathParameters['budgetId']!),
       ),
       GoRoute(
         path: '/settings',

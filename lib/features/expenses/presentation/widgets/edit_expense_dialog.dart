@@ -26,6 +26,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
 
   late String? _categoryId = widget.expense.categoryId;
   late String? _subcategoryId = widget.expense.subcategoryId;
+  late DateTime _date = widget.expense.date;
 
   bool _isSaving = false;
   String? _errorMessage;
@@ -73,6 +74,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
             id: widget.expense.id,
             title: _titleController.text.trim(),
             amount: parseAmount(_amountController.text)!,
+            date: _date,
             categoryId: _categoryId!,
             subcategoryId: _subcategoryId,
           );
@@ -117,6 +119,23 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
                   if (amount == null || amount <= 0) return 'Inserisci un importo valido';
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => _date = picked);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Data'),
+                  child: Text(formatDate(_date)),
+                ),
               ),
               const SizedBox(height: 16),
               categoriesAsync.when(

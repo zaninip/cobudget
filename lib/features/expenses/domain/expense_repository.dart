@@ -1,6 +1,16 @@
 import 'category.dart';
 import 'expense.dart';
 
+/// Dati di una nuova voce da inserire in blocco (usato dall'import da screenshot).
+typedef NewExpense = ({
+  String title,
+  double amount,
+  DateTime date,
+  String categoryId,
+  String? subcategoryId,
+  ExpenseType type,
+});
+
 /// Astrazione su categorie e spese di un budget (vedi ARCHITECTURE.md - flow 4).
 abstract class ExpenseRepository {
   /// Categorie visibili per il budget (globali + specifiche del budget),
@@ -19,6 +29,14 @@ abstract class ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+  });
+
+  /// Inserisce in blocco N voci nel budget [budgetId] con la `source` indicata
+  /// (default `screenshot`), in un solo round-trip. Usato dalla review dell'import.
+  Future<void> addExpenses({
+    required String budgetId,
+    required List<NewExpense> items,
+    String source = 'screenshot',
   });
 
   /// Crea N voci (una per ogni mese tra [startMonth] e [endMonth] inclusi),
@@ -48,11 +66,12 @@ abstract class ExpenseRepository {
     required String name,
   });
 
-  /// Aggiorna titolo, importo, categoria e sottocategoria di una spesa esistente.
+  /// Aggiorna titolo, importo, data, categoria e sottocategoria di una spesa esistente.
   Future<void> updateExpense({
     required String id,
     required String title,
     required double amount,
+    required DateTime date,
     required String categoryId,
     String? subcategoryId,
   });

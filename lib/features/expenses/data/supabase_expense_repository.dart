@@ -62,6 +62,31 @@ class SupabaseExpenseRepository implements ExpenseRepository {
   }
 
   @override
+  Future<void> addExpenses({
+    required String budgetId,
+    required List<NewExpense> items,
+    String source = 'screenshot',
+  }) async {
+    if (items.isEmpty) return;
+    final userId = _client.auth.currentUser!.id;
+    final rows = [
+      for (final item in items)
+        {
+          'budget_id': budgetId,
+          'user_id': userId,
+          'title': item.title,
+          'amount': item.amount,
+          'date': _formatDate(item.date),
+          'category_id': item.categoryId,
+          'subcategory_id': item.subcategoryId,
+          'type': item.type.name,
+          'source': source,
+        },
+    ];
+    await _client.from('expenses').insert(rows);
+  }
+
+  @override
   Future<void> addSpreadExpenses({
     required String budgetId,
     required String title,
@@ -138,12 +163,14 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required String id,
     required String title,
     required double amount,
+    required DateTime date,
     required String categoryId,
     String? subcategoryId,
   }) async {
     await _client.from('expenses').update({
       'title': title,
       'amount': amount,
+      'date': _formatDate(date),
       'category_id': categoryId,
       'subcategory_id': subcategoryId,
     }).eq('id', id);
