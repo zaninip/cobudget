@@ -12,7 +12,8 @@ class ExtractedExpense {
     this.type = ExpenseType.expense,
     this.categoryId,
     this.subcategoryId,
-  });
+    String? sourceTitle,
+  }) : sourceTitle = sourceTitle ?? title;
 
   factory ExtractedExpense.fromMap(Map<String, dynamic> map) {
     final rawDate = map['date'] as String?;
@@ -25,6 +26,12 @@ class ExtractedExpense {
       subcategoryId: map['subcategoryId'] as String?,
     );
   }
+
+  /// Titolo letto dallo screenshot (identifica il negoziante). Resta immutabile
+  /// anche se l'utente rinomina `title` in review: e' la chiave per l'apprendimento
+  /// della categoria, cosi' "Monoprix" rinominato in "Spesa" impara comunque
+  /// Monoprix -> categoria scelta.
+  final String sourceTitle;
 
   String title;
   double amount;

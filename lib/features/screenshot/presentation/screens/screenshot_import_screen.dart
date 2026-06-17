@@ -8,6 +8,9 @@ import '../../../../core/utils/error_message.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/error_dialog.dart';
 import '../../../../core/widgets/loading_button.dart';
+import '../../../categorization/data/learned_matcher.dart';
+import '../../../categorization/data/supabase_category_learning_repository.dart';
+import '../../../categorization/presentation/learning_feedback.dart';
 import '../../../expenses/data/supabase_expense_repository.dart';
 import '../../../expenses/domain/expense.dart';
 import '../../../expenses/domain/expense_repository.dart';
@@ -70,6 +73,7 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
           );
       final existing = await ref.read(recentExpensesProvider(widget.budgetId).future);
       final result = dedupExtracted(extracted, existing);
+      final learningOk = await _applyLearnedCategories(result.kept);
       if (!mounted) return;
       setState(() {
         _items = result.kept;
@@ -77,10 +81,55 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
         _index = 0;
         _phase = _Phase.review;
       });
+      if (!learningOk) showLearningWarning(context);
     } catch (e) {
       if (!mounted) return;
       setState(() => _phase = _Phase.choosing);
       await showErrorDialog(context, errorMessage(e));
+    }
+  }
+
+  /// Registra le scelte di categoria nella memoria, usando il titolo ORIGINALE
+  /// letto dallo screenshot (`sourceTitle`) come chiave del negoziante anche se
+  /// l'utente ha rinominato la voce. Best-effort: ritorna false se l'apprendimento
+  /// non e' disponibile (l'avviso lo mostra il chiamante).
+  Future<bool> _recordLearning(List<ExtractedExpense> items) async {
+    try {
+      await ref.read(categoryLearningRepositoryProvider).recordChoices(
+            budgetId: widget.budgetId,
+            entries: [
+              for (final e in items)
+                if (e.categoryId != null)
+                  (
+                    title: e.sourceTitle,
+                    categoryId: e.categoryId!,
+                    subcategoryId: e.subcategoryId,
+                  ),
+            ],
+          );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Precompila categoria/sottocategoria dalle scelte passate (memoria per-budget).
+  /// La memoria ha la precedenza sul suggerimento di Claude e riempie il null del
+  /// Free. Best-effort: ritorna false se i suggerimenti non sono disponibili.
+  Future<bool> _applyLearnedCategories(List<ExtractedExpense> items) async {
+    try {
+      final learned =
+          await ref.read(categoryLearningRepositoryProvider).suggestions(widget.budgetId);
+      for (final e in items) {
+        final match = matchLearned(learned, e.sourceTitle);
+        if (match != null) {
+          e.categoryId = match.categoryId;
+          e.subcategoryId = match.subcategoryId;
+        }
+      }
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -143,10 +192,19 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
       await ref
           .read(expenseRepositoryProvider)
           .addExpenses(budgetId: widget.budgetId, items: items);
+      // Alimenta la memoria con la categoria finale di ogni voce (qualunque ne
+      // sia l'origine: suggerimento Claude accettato, appreso o scelto a mano).
+      final learningOk = await _recordLearning(_items);
       ref.invalidate(recentExpensesProvider(widget.budgetId));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${items.length} voci salvate')),
+        SnackBar(
+          content: Text(
+            learningOk
+                ? '${items.length} voci salvate'
+                : '${items.length} voci salvate — $learningUnavailableMessage',
+          ),
+        ),
       );
       context.pop();
     } catch (e) {

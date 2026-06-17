@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/loading_button.dart';
+import '../../../categorization/data/supabase_category_learning_repository.dart';
+import '../../../categorization/presentation/learning_feedback.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/expense.dart';
 import 'category_selector.dart';
@@ -70,16 +72,32 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
     });
 
     try {
+      final title = _titleController.text.trim();
       await ref.read(expenseRepositoryProvider).updateExpense(
             id: widget.expense.id,
-            title: _titleController.text.trim(),
+            title: title,
             amount: parseAmount(_amountController.text)!,
             date: _date,
             categoryId: _categoryId!,
             subcategoryId: _subcategoryId,
           );
+      // Alimenta la memoria di categorizzazione con la scelta dell'utente. Best-effort.
+      var learningOk = true;
+      try {
+        await ref.read(categoryLearningRepositoryProvider).recordChoices(
+          budgetId: widget.expense.budgetId,
+          entries: [
+            (title: title, categoryId: _categoryId!, subcategoryId: _subcategoryId),
+          ],
+        );
+      } catch (_) {
+        learningOk = false;
+      }
       ref.invalidate(recentExpensesProvider(widget.expense.budgetId));
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        if (!learningOk) showLearningWarning(context);
+        Navigator.of(context).pop();
+      }
     } catch (_) {
       setState(() {
         _isSaving = false;

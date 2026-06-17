@@ -6,6 +6,8 @@ import '../../../../core/utils/error_message.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/error_dialog.dart';
 import '../../../../core/widgets/loading_button.dart';
+import '../../../categorization/data/supabase_category_learning_repository.dart';
+import '../../../categorization/presentation/learning_feedback.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../../domain/expense.dart';
@@ -108,6 +110,24 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
     }
   }
 
+  /// Alimenta la memoria di categorizzazione con il titolo inserito e la categoria
+  /// scelta (per le spalmate il titolo base, non le "i/N"). Best-effort.
+  void _recordLearning() {
+    final title = _titleController.text.trim();
+    final categoryId = _categoryId;
+    if (title.isEmpty || categoryId == null) return;
+    // Catturo il messenger prima del pop: l'avviso (best-effort) potra' comparire
+    // sulla schermata sottostante anche dopo che questa e' stata chiusa.
+    final messenger = ScaffoldMessenger.of(context);
+    ref
+        .read(categoryLearningRepositoryProvider)
+        .recordChoices(
+          budgetId: widget.budgetId,
+          entries: [(title: title, categoryId: categoryId, subcategoryId: _subcategoryId)],
+        )
+        .then((_) {}, onError: (_) => messenger.showSnackBar(learningWarningSnackBar()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(expenseCategoriesProvider(widget.budgetId));
@@ -120,6 +140,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         },
       );
       if (previous is AsyncLoading && next is AsyncData) {
+        _recordLearning();
         context.pop();
       }
     });

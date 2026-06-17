@@ -131,26 +131,51 @@ class HomeScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Errore nel caricamento delle spese: $error')),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'import',
-            onPressed: () => context.push('/budget/$budgetId/import'),
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-            foregroundColor: Theme.of(context).colorScheme.onSecondary,
-            icon: const Icon(Icons.document_scanner_outlined),
-            label: const Text('Da screenshot'),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'manual',
-            onPressed: () => context.push('/budget/$budgetId/expenses/new'),
-            icon: const Icon(Icons.add),
-            label: const Text('Nuova spesa'),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddOptions(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Nuova spesa'),
+      ),
+    );
+  }
+
+  /// Mostra le due modalità di inserimento (vedi UI_DESIGN.md - sezione 4).
+  Future<void> _showAddOptions(BuildContext context) async {
+    final scheme = Theme.of(context).colorScheme;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
+                child: const Icon(Icons.edit_outlined),
+              ),
+              title: const Text('Inserire spesa manuale'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('/budget/$budgetId/expenses/new');
+              },
+            ),
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: scheme.secondaryContainer,
+                foregroundColor: scheme.onSecondaryContainer,
+                child: const Icon(Icons.document_scanner_outlined),
+              ),
+              title: const Text('Inserire da screenshot'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('/budget/$budgetId/import');
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
