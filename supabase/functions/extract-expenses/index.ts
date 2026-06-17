@@ -45,21 +45,28 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Metodo non consentito" }, 405);
   }
 
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) {
-    return json({ error: "ANTHROPIC_API_KEY non configurata sul server" }, 500);
-  }
-
   let payload: {
     image?: string;
     mediaType?: string;
     modelTier?: string;
     categories?: CategoryIn[];
+    apiKey?: string;
   };
   try {
     payload = await req.json();
   } catch {
     return json({ error: "Body JSON non valido" }, 400);
+  }
+
+  // Ogni utente deve fornire la propria chiave Anthropic (configurabile nelle
+  // Impostazioni dell'app). Nessun fallback lato server: chi non ha la chiave
+  // riceve un errore esplicito che lo invita a configurarla.
+  const apiKey = payload.apiKey?.trim();
+  if (!apiKey) {
+    return json(
+      { error: "Chiave API Anthropic non configurata. Vai in Impostazioni e inserisci la tua chiave personale." },
+      400,
+    );
   }
 
   const { image, mediaType, modelTier, categories } = payload;

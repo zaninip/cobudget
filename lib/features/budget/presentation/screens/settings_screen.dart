@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/anthropic_key_controller.dart';
 import '../../../../app/extraction_model_controller.dart';
 import '../../../../app/theme_mode_controller.dart';
 import '../../data/supabase_budget_repository.dart';
@@ -71,6 +72,10 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: (model) =>
                       ref.read(extractionModelControllerProvider.notifier).setModel(model),
                 ),
+                const SizedBox(height: 24),
+                const _SectionTitle('Chiave API Anthropic'),
+                const SizedBox(height: 8),
+                const _AnthropicKeySection(),
               ],
             ),
           ),
@@ -187,6 +192,104 @@ class _ThemeSelector extends StatelessWidget {
       ],
       selected: {effective},
       onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+/// Campo per inserire/rimuovere la chiave API Anthropic personale.
+/// La chiave viene salvata con flutter_secure_storage (cifrata sul dispositivo)
+/// e inviata alla Edge Function al posto della chiave server condivisa.
+class _AnthropicKeySection extends ConsumerStatefulWidget {
+  const _AnthropicKeySection();
+
+  @override
+  ConsumerState<_AnthropicKeySection> createState() => _AnthropicKeySectionState();
+}
+
+class _AnthropicKeySectionState extends ConsumerState<_AnthropicKeySection> {
+  final _controller = TextEditingController();
+  bool _obscure = true;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final key = _controller.text.trim();
+    if (key.isEmpty) return;
+    setState(() => _saving = true);
+    await ref.read(anthropicKeyControllerProvider.notifier).setKey(key);
+    _controller.clear();
+    if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _remove() async {
+    await ref.read(anthropicKeyControllerProvider.notifier).clearKey();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keyAsync = ref.watch(anthropicKeyControllerProvider);
+    final hasKey = keyAsync.valueOrNull?.isNotEmpty == true;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (hasKey)
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.check_circle_outline, color: scheme.primary),
+              title: const Text('Chiave personale configurata'),
+              trailing: TextButton(
+                onPressed: _remove,
+                style: TextButton.styleFrom(foregroundColor: scheme.error),
+                child: const Text('Rimuovi'),
+              ),
+            ),
+          )
+        else
+          Text(
+            'Necessaria per importare le spese dagli screenshot. '
+            'Viene salvata cifrata sul dispositivo.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                obscureText: _obscure,
+                decoration: InputDecoration(
+                  hintText: hasKey ? 'Inserisci una nuova chiave…' : 'sk-ant-api03-…',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Salva'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
