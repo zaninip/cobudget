@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/anthropic_key_controller.dart';
+import '../../../../app/extraction_engine_controller.dart';
 import '../../../../app/extraction_model_controller.dart';
 import '../../../../app/theme_mode_controller.dart';
 import '../../data/supabase_budget_repository.dart';
@@ -19,6 +20,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeControllerProvider);
+    final extractionEngine = ref.watch(extractionEngineControllerProvider);
     final extractionModel = ref.watch(extractionModelControllerProvider);
     final budgetId = this.budgetId;
 
@@ -65,17 +67,28 @@ class SettingsScreen extends ConsumerWidget {
                       ref.read(themeModeControllerProvider.notifier).setThemeMode(mode),
                 ),
                 const SizedBox(height: 24),
-                const _SectionTitle('Modello di estrazione'),
+                const _SectionTitle('Lettura screenshot'),
                 const SizedBox(height: 8),
-                _ExtractionModelSelector(
-                  model: extractionModel,
-                  onChanged: (model) =>
-                      ref.read(extractionModelControllerProvider.notifier).setModel(model),
+                _EngineSelector(
+                  engine: extractionEngine,
+                  onChanged: (engine) => ref
+                      .read(extractionEngineControllerProvider.notifier)
+                      .setEngine(engine),
                 ),
-                const SizedBox(height: 24),
-                const _SectionTitle('Chiave API Anthropic'),
-                const SizedBox(height: 8),
-                const _AnthropicKeySection(),
+                if (extractionEngine == ExtractionEngine.claude) ...[
+                  const SizedBox(height: 24),
+                  const _SectionTitle('Modello di estrazione'),
+                  const SizedBox(height: 8),
+                  _ExtractionModelSelector(
+                    model: extractionModel,
+                    onChanged: (model) =>
+                        ref.read(extractionModelControllerProvider.notifier).setModel(model),
+                  ),
+                  const SizedBox(height: 24),
+                  const _SectionTitle('Chiave API Anthropic'),
+                  const SizedBox(height: 8),
+                  const _AnthropicKeySection(),
+                ],
               ],
             ),
           ),
@@ -288,6 +301,53 @@ class _AnthropicKeySectionState extends ConsumerState<_AnthropicKeySection> {
                   : const Text('Salva'),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Selettore del motore usato per leggere gli screenshot:
+/// "Free" = OCR gratuito sul dispositivo (solo smartphone);
+/// "Claude based" = Claude Vision (richiede chiave Anthropic, piu' accurato).
+class _EngineSelector extends StatelessWidget {
+  const _EngineSelector({required this.engine, required this.onChanged});
+
+  final ExtractionEngine engine;
+  final ValueChanged<ExtractionEngine> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isFree = engine == ExtractionEngine.free;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<ExtractionEngine>(
+          segments: const [
+            ButtonSegment(
+              value: ExtractionEngine.free,
+              label: Text('Free'),
+              icon: Icon(Icons.phone_android_outlined),
+            ),
+            ButtonSegment(
+              value: ExtractionEngine.claude,
+              label: Text('Claude based'),
+              icon: Icon(Icons.auto_awesome_outlined),
+            ),
+          ],
+          selected: {engine},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isFree
+              ? 'Gratis e senza chiave: legge gli screenshot direttamente sul '
+                  'dispositivo. Disponibile solo su smartphone, non nel browser.'
+              : 'Usa Claude Vision: piu’ accurato e con suggerimento della '
+                  'categoria, ma richiede la tua chiave API Anthropic.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
       ],
     );

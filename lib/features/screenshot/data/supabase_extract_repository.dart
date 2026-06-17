@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../app/anthropic_key_controller.dart';
+import '../../../app/extraction_engine_controller.dart';
 import '../../../app/extraction_model_controller.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../expenses/domain/category.dart';
 import '../domain/extract_repository.dart';
 import '../domain/extracted_expense.dart';
+import 'mlkit_extract_repository.dart';
 
 class SupabaseExtractRepository implements ExtractRepository {
   SupabaseExtractRepository(this._client, this._keyController);
@@ -23,6 +25,7 @@ class SupabaseExtractRepository implements ExtractRepository {
     required String mediaType,
     required List<ExpenseCategory> categories,
     required ExtractionModel model,
+    String? sourcePath, // ignorato: il percorso Claude usa i bytes
   }) async {
     final userApiKey = await _keyController.readKey();
 
@@ -55,9 +58,15 @@ class SupabaseExtractRepository implements ExtractRepository {
 }
 
 final extractRepositoryProvider = Provider<ExtractRepository>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  // Legge il notifier direttamente per accedere a readKey() senza bloccarsi
-  // sull'AsyncValue (la lettura è lazy, avviene dentro extract()).
-  final keyController = ref.watch(anthropicKeyControllerProvider.notifier);
-  return SupabaseExtractRepository(client, keyController);
+  // Sceglie l'implementazione in base al motore configurato in Impostazioni.
+  switch (ref.watch(extractionEngineControllerProvider)) {
+    case ExtractionEngine.claude:
+      final client = ref.watch(supabaseClientProvider);
+      // Legge il notifier direttamente per accedere a readKey() senza bloccarsi
+      // sull'AsyncValue (la lettura è lazy, avviene dentro extract()).
+      final keyController = ref.watch(anthropicKeyControllerProvider.notifier);
+      return SupabaseExtractRepository(client, keyController);
+    case ExtractionEngine.free:
+      return MlKitExtractRepository();
+  }
 });

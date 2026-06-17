@@ -66,6 +66,7 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
             mediaType: _mediaTypeFor(file),
             categories: categories,
             model: model,
+            sourcePath: file.path,
           );
       final existing = await ref.read(recentExpensesProvider(widget.budgetId).future);
       final result = dedupExtracted(extracted, existing);
