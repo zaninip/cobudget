@@ -88,6 +88,35 @@ void main() {
       expect(juin.single.date, DateTime(2026, 6, 1));
       expect(juil.single.date, DateTime(2026, 7, 1));
     });
+
+    test('mese inglese giorno-mese con anno esplicito', () {
+      final items = parseOcrLines([_line('Netflix 15 June 2025 -12,99')], currentYear: year);
+      expect(items.single.date, DateTime(2025, 6, 15));
+      expect(items.single.title, 'Netflix');
+    });
+
+    test('mese inglese mese-giorno (June 15)', () {
+      final items = parseOcrLines([_line('Amazon June 15 -30,00')], currentYear: year);
+      expect(items.single.date, DateTime(2026, 6, 15));
+    });
+
+    test('mese inglese mese-giorno con anno e virgola (Jun 15, 2025)', () {
+      final items = parseOcrLines([_line('Spotify Jun 15, 2025 -9,99')], currentYear: year);
+      expect(items.single.date, DateTime(2025, 6, 15));
+    });
+  });
+
+  group('parseOcrLines - data ISO', () {
+    test('formato aaaa-mm-gg', () {
+      final items = parseOcrLines([_line('Bonifico 2025-06-15 -50,00')], currentYear: year);
+      expect(items.single.date, DateTime(2025, 6, 15));
+      expect(items.single.title, 'Bonifico');
+    });
+
+    test('ISO non interpretato come gg/mm dal parser numerico', () {
+      final items = parseOcrLines([_line('Acquisto 2024-03-09 -1,00')], currentYear: year);
+      expect(items.single.date, DateTime(2024, 3, 9));
+    });
   });
 
   group('parseOcrLines - layout a piu\' righe', () {

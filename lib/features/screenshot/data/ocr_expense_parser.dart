@@ -37,13 +37,21 @@ final _moneyRe = RegExp(
   r'([+-])?\s*(?:€|EUR)?\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*,\s*(\d{2})\s*(?:€|EUR)?',
 );
 
+// Data ISO: aaaa-mm-gg (anche con '/' o '.'). Provata per prima, altrimenti il
+// parser numerico interpreterebbe male l'anno a 4 cifre.
+final _isoDateRe = RegExp(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})');
+
 // Data numerica: gg/mm, gg/mm/aa, gg/mm/aaaa (anche con '.' o '-').
 final _numDateRe = RegExp(r'(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?');
 
-// Data testuale: giorno + mese in lettere (it/fr), es. "15 giu", "29 mai",
-// "3 gennaio". L'anno e' opzionale.
-final _textDateRe = RegExp(
-  r'(\d{1,2})\s+([A-Za-zàáâäèéêëìíîïòóôöùúûüç]{3,})\.?(?:\s+(\d{4}))?',
+// Data testuale giorno-mese (it/fr/en), es. "15 giu", "29 mai", "15 June 2025".
+final _textDateDmRe = RegExp(
+  r'(\d{1,2})\s+([A-Za-zàáâäèéêëìíîïòóôöùúûüç]{3,})\.?(?:,?\s+(\d{4}))?',
+);
+
+// Data testuale mese-giorno (en), es. "June 15", "Jun 15, 2025".
+final _textDateMdRe = RegExp(
+  r'([A-Za-zàáâäèéêëìíîïòóôöùúûüç]{3,})\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?',
 );
 
 final _multiSpaceRe = RegExp(r'\s+');
@@ -51,21 +59,23 @@ final _edgeSepRe = RegExp(r'^[·\-–—:|]+|[·\-–—:|]+$');
 final _trailingPrepRe = RegExp(r'\s+(?:du|del|dal)$', caseSensitive: false);
 final _thousandsSepRe = RegExp(r'[.\s]');
 
-// Stem dei mesi (italiano + francese), normalizzati senza accenti. Confrontati
-// per prefisso, dal piu' lungo al piu' corto per evitare collisioni (juin/juil).
+// Stem dei mesi (italiano + francese + inglese), normalizzati senza accenti.
+// Confrontati per prefisso, dal piu' lungo al piu' corto per evitare collisioni
+// (es. juin/juil, june/july, set/sett).
 const _monthStems = <String, int>{
-  'gennaio': 1, 'gen': 1, 'janvier': 1, 'janv': 1, 'jan': 1,
-  'febbraio': 2, 'feb': 2, 'fevrier': 2, 'fevr': 2, 'fev': 2,
-  'marzo': 3, 'mars': 3, 'mar': 3,
-  'aprile': 4, 'apr': 4, 'avril': 4, 'avr': 4,
+  'gennaio': 1, 'gen': 1, 'janvier': 1, 'janv': 1, 'january': 1, 'jan': 1,
+  'febbraio': 2, 'feb': 2, 'fevrier': 2, 'fevr': 2, 'february': 2, 'fev': 2,
+  'marzo': 3, 'mars': 3, 'march': 3, 'mar': 3,
+  'aprile': 4, 'apr': 4, 'avril': 4, 'avr': 4, 'april': 4,
   'maggio': 5, 'mag': 5, 'mai': 5, 'may': 5,
-  'giugno': 6, 'giu': 6, 'juin': 6,
-  'luglio': 7, 'lug': 7, 'juillet': 7, 'juil': 7,
-  'agosto': 8, 'ago': 8, 'aout': 8, 'aou': 8,
-  'settembre': 9, 'sett': 9, 'set': 9, 'septembre': 9, 'sept': 9, 'sep': 9,
-  'ottobre': 10, 'ott': 10, 'octobre': 10, 'oct': 10,
-  'novembre': 11, 'nov': 11,
-  'dicembre': 12, 'dic': 12, 'decembre': 12, 'dec': 12,
+  'giugno': 6, 'giu': 6, 'juin': 6, 'june': 6, 'jun': 6,
+  'luglio': 7, 'lug': 7, 'juillet': 7, 'juil': 7, 'july': 7, 'jul': 7,
+  'agosto': 8, 'ago': 8, 'aout': 8, 'aou': 8, 'august': 8, 'aug': 8,
+  'settembre': 9, 'sett': 9, 'set': 9, 'septembre': 9, 'september': 9,
+  'sept': 9, 'sep': 9,
+  'ottobre': 10, 'ott': 10, 'octobre': 10, 'october': 10, 'oct': 10,
+  'novembre': 11, 'november': 11, 'nov': 11,
+  'dicembre': 12, 'dic': 12, 'decembre': 12, 'december': 12, 'dec': 12,
 };
 
 class _DateHit {
@@ -217,14 +227,27 @@ String _cleanTitle(String text) {
   return title;
 }
 
-/// Cerca una data nel testo: prima numerica, poi testuale (mese in lettere).
+/// Cerca una data nel testo, provando i formati in ordine di specificita':
+/// ISO (anno a 4 cifre) -> numerico gg/mm -> testuale giorno-mese -> mese-giorno.
 _DateHit? _findDate(String text, int currentYear) {
+  for (final m in _isoDateRe.allMatches(text)) {
+    final d = _buildDate(
+      int.parse(m.group(1)!),
+      int.parse(m.group(2)!),
+      int.parse(m.group(3)!),
+    );
+    if (d != null) return _DateHit(d, m.start, m.end);
+  }
   for (final m in _numDateRe.allMatches(text)) {
     final d = _parseNumericDate(m, currentYear);
     if (d != null) return _DateHit(d, m.start, m.end);
   }
-  for (final m in _textDateRe.allMatches(text)) {
-    final d = _parseTextualDate(m, currentYear);
+  for (final m in _textDateDmRe.allMatches(text)) {
+    final d = _parseTextualDate(m.group(1)!, m.group(2)!, m.group(3), currentYear);
+    if (d != null) return _DateHit(d, m.start, m.end);
+  }
+  for (final m in _textDateMdRe.allMatches(text)) {
+    final d = _parseTextualDate(m.group(2)!, m.group(1)!, m.group(3), currentYear);
     if (d != null) return _DateHit(d, m.start, m.end);
   }
   return null;
@@ -242,11 +265,15 @@ DateTime? _parseNumericDate(RegExpMatch m, int currentYear) {
   return _buildDate(year, month, day);
 }
 
-DateTime? _parseTextualDate(RegExpMatch m, int currentYear) {
-  final day = int.parse(m.group(1)!);
-  final month = _monthFromWord(m.group(2)!);
+DateTime? _parseTextualDate(
+  String dayStr,
+  String monthWord,
+  String? rawYear,
+  int currentYear,
+) {
+  final day = int.parse(dayStr);
+  final month = _monthFromWord(monthWord);
   if (month == null) return null;
-  final rawYear = m.group(3);
   final year = rawYear != null ? int.parse(rawYear) : currentYear;
   return _buildDate(year, month, day);
 }
