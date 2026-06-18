@@ -18,12 +18,15 @@ class SupabaseBudgetRepository implements BudgetRepository {
 
     final result = await _client
         .from('budget_members')
-        .select('budgets(*)')
+        .select('role, budgets(*)')
         .eq('user_id', userId)
         .order('joined_at');
 
     return (result as List)
-        .map((e) => Budget.fromMap(e['budgets'] as Map<String, dynamic>))
+        .map((e) => Budget.fromMap(
+              e['budgets'] as Map<String, dynamic>,
+              isAdmin: e['role'] == 'admin',
+            ))
         .toList();
   }
 
@@ -57,6 +60,11 @@ class SupabaseBudgetRepository implements BudgetRepository {
   Future<void> leaveBudget(String budgetId) async {
     final userId = _client.auth.currentUser!.id;
     await _client.from('budget_members').delete().eq('budget_id', budgetId).eq('user_id', userId);
+  }
+
+  @override
+  Future<void> deleteBudget(String budgetId) async {
+    await _client.rpc('delete_budget', params: {'p_budget_id': budgetId});
   }
 }
 

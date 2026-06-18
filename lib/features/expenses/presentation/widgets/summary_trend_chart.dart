@@ -1,22 +1,27 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../utils/expense_summary.dart';
+import 'summary_pie_chart.dart';
 
-/// Grafico a barre raggruppate dell'andamento nel tempo: uscite (viola) ed
-/// entrate (verde) affiancate per bucket, con serie opzionale del saldo (teal).
+/// Grafico a barre dell'andamento nel tempo. Per ogni bucket (mese) mostra, a
+/// seconda dei filtri selezionati: una barra **impilata per categoria** delle
+/// uscite, una delle entrate, e una barra semplice del saldo (che puo' essere
+/// negativo). Quando e' selezionata una sola categoria le barre impilate sono
+/// suddivise per **sottocategoria** ([shaded]), come le torte del riepilogo.
 class SummaryTrendChart extends StatelessWidget {
   const SummaryTrendChart({
     super.key,
-    required this.buckets,
+    required this.trend,
+    required this.shaded,
     required this.showOutcome,
     required this.showIncome,
     required this.showBalance,
   });
 
-  final List<PeriodBucket> buckets;
+  final StackedTrend trend;
+  final bool shaded;
   final bool showOutcome;
   final bool showIncome;
   final bool showBalance;
@@ -24,9 +29,9 @@ class SummaryTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final outcomeColor = scheme.primary;
-    final incomeColor = context.appColors.success;
+    final neutral = scheme.onSurfaceVariant;
     final balanceColor = scheme.secondary;
+    final buckets = trend.buckets;
 
     // Estremi dell'asse Y (il saldo può essere negativo).
     var maxY = 0.0;
@@ -34,8 +39,8 @@ class SummaryTrendChart extends StatelessWidget {
     for (final b in buckets) {
       maxY = [
         maxY,
-        if (showOutcome) b.outcome,
-        if (showIncome) b.income,
+        if (showOutcome) b.outcomeTotal,
+        if (showIncome) b.incomeTotal,
         if (showBalance) b.balance,
       ].reduce((a, c) => a > c ? a : c);
       if (showBalance && b.balance < minY) minY = b.balance;
@@ -45,8 +50,9 @@ class SummaryTrendChart extends StatelessWidget {
     minY = minY == 0 ? 0 : -_niceCeil(minY.abs());
     final interval = _niceStep(maxY - minY);
 
-    final seriesCount = (showOutcome ? 1 : 0) + (showIncome ? 1 : 0) + (showBalance ? 1 : 0);
-    final perGroup = 24.0 + seriesCount * 16.0;
+    final seriesCount =
+        (showOutcome ? 1 : 0) + (showIncome ? 1 : 0) + (showBalance ? 1 : 0);
+    final perGroup = 24.0 + seriesCount * 18.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -131,9 +137,11 @@ class SummaryTrendChart extends StatelessWidget {
                         x: i,
                         barsSpace: 3,
                         barRods: [
-                          if (showOutcome) _rod(buckets[i].outcome, outcomeColor),
-                          if (showIncome) _rod(buckets[i].income, incomeColor),
-                          if (showBalance) _rod(buckets[i].balance, balanceColor),
+                          if (showOutcome)
+                            _stackedRod(buckets[i].outcome, trend.outcomeKeys, neutral),
+                          if (showIncome)
+                            _stackedRod(buckets[i].income, trend.incomeKeys, neutral),
+                          if (showBalance) _simpleRod(buckets[i].balance, balanceColor),
                         ],
                       ),
                   ],
@@ -146,10 +154,34 @@ class SummaryTrendChart extends StatelessWidget {
     );
   }
 
-  BarChartRodData _rod(double value, Color color) => BarChartRodData(
+  /// Barra impilata: un segmento colorato per categoria/sottocategoria, nello
+  /// stesso ordine (e con gli stessi colori) della legenda.
+  BarChartRodData _stackedRod(
+    Map<String, double> amounts,
+    List<CategorySlice> keys,
+    Color neutral,
+  ) {
+    var from = 0.0;
+    final items = <BarChartRodStackItem>[];
+    for (var i = 0; i < keys.length; i++) {
+      final amount = amounts[keys[i].key] ?? 0;
+      if (amount <= 0) continue;
+      final color = summarySliceColor(keys[i], i, keys.length, shaded: shaded, neutral: neutral);
+      items.add(BarChartRodStackItem(from, from + amount, color));
+      from += amount;
+    }
+    return BarChartRodData(
+      toY: from,
+      rodStackItems: items,
+      width: 13,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+    );
+  }
+
+  BarChartRodData _simpleRod(double value, Color color) => BarChartRodData(
         toY: value,
         color: color,
-        width: 10,
+        width: 11,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
       );
 

@@ -8,6 +8,9 @@ import '../../data/supabase_budget_repository.dart';
 import '../../domain/budget.dart';
 import '../widgets/budget_form_dialogs.dart';
 
+/// Azione scelta da un admin sul cestino del budget.
+enum _TileAction { leave, delete }
+
 /// Schermata iniziale: crea/unisciti a un budget e accedi a quelli esistenti
 /// (vedi UI_DESIGN.md - sezione 2 e ARCHITECTURE.md - flow 1).
 class BudgetsDashboardScreen extends ConsumerStatefulWidget {
@@ -34,39 +37,112 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
     if (budget != null && mounted) context.go('/budget/${budget.id}');
   }
 
-  Future<void> _leaveBudget(Budget budget) async {
-    final confirmed = await showDialog<bool>(
+  /// Gestisce il tap sul cestino: un membro normale può solo uscire, un admin
+  /// può anche eliminare definitivamente il budget (con doppia conferma).
+  Future<void> _onTrash(Budget budget) async {
+    if (!budget.isAdmin) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Uscire dal budget?'),
+          content: Text(
+            'Vuoi uscire da "${budget.name}"? Potrai tornare a farne parte con il codice invito.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annulla'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+              child: const Text('Esci'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) await _doLeave(budget);
+      return;
+    }
+
+    // Admin: scelta tra uscire ed eliminare.
+    final action = await showDialog<_TileAction>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Uscire dal budget?'),
+        title: const Text('Uscire o eliminare il budget?'),
         content: Text(
-          'Vuoi uscire da "${budget.name}"? Potrai tornare a farne parte con il codice invito.',
+          'Vuoi eliminare "${budget.name}" in maniera definitiva o semplicemente uscirne, '
+          'con la possibilità di tornare a farne parte con il codice invito?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Annulla'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_TileAction.leave),
             child: const Text('Esci'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_TileAction.delete),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Elimina'),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
 
+    if (action == _TileAction.leave) {
+      await _doLeave(budget);
+    } else if (action == _TileAction.delete) {
+      if (!mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Eliminare il budget?'),
+          content: const Text(
+            'Attenzione: l\'operazione è definitiva e irreversibile. Vuoi continuare?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annulla'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+              child: const Text('Conferma'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) await _doDelete(budget);
+    }
+  }
+
+  Future<void> _doLeave(Budget budget) async {
     try {
       await ref.read(budgetRepositoryProvider).leaveBudget(budget.id);
       ref.invalidate(userBudgetsProvider);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Si è verificato un errore. Riprova.')),
-        );
-      }
+      _showError();
     }
+  }
+
+  Future<void> _doDelete(Budget budget) async {
+    try {
+      await ref.read(budgetRepositoryProvider).deleteBudget(budget.id);
+      ref.invalidate(userBudgetsProvider);
+    } catch (_) {
+      _showError();
+    }
+  }
+
+  void _showError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Si è verificato un errore. Riprova.')),
+    );
   }
 
   @override
@@ -133,7 +209,7 @@ class _BudgetsDashboardScreenState extends ConsumerState<BudgetsDashboardScreen>
                           _BudgetTile(
                             budget: budget,
                             onTap: () => context.go('/budget/${budget.id}'),
-                            onLeave: () => _leaveBudget(budget),
+                            onTrash: () => _onTrash(budget),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -248,11 +324,11 @@ class _IconBadge extends StatelessWidget {
 
 /// Voce della lista "I tuoi budget".
 class _BudgetTile extends StatelessWidget {
-  const _BudgetTile({required this.budget, required this.onTap, required this.onLeave});
+  const _BudgetTile({required this.budget, required this.onTap, required this.onTrash});
 
   final Budget budget;
   final VoidCallback onTap;
-  final VoidCallback onLeave;
+  final VoidCallback onTrash;
 
   @override
   Widget build(BuildContext context) {
@@ -294,8 +370,8 @@ class _BudgetTile extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline),
-                tooltip: 'Esci dal budget',
-                onPressed: onLeave,
+                tooltip: budget.isAdmin ? 'Esci o elimina il budget' : 'Esci dal budget',
+                onPressed: onTrash,
               ),
             ],
           ),

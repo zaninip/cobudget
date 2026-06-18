@@ -18,4 +18,8 @@ abstract class BudgetRepository {
 
   /// Rimuove l'utente corrente dai membri del budget.
   Future<void> leaveBudget(String budgetId);
+
+  /// Elimina definitivamente il budget e tutto ciò che vi è collegato.
+  /// Consentito solo all'amministratore del budget (verificato lato server).
+  Future<void> deleteBudget(String budgetId);
 }

@@ -226,4 +226,89 @@ void main() {
       expect(buckets.last.label, 'feb 26');
     });
   });
+
+  group('stackedTrend', () {
+    final expenses = [
+      // Maggio
+      _expense(id: 'a', date: DateTime(2026, 5, 4), amount: 30, categoryId: 'cat-food'),
+      _expense(id: 'b', date: DateTime(2026, 5, 10), amount: 20, categoryId: 'cat-car'),
+      _expense(id: 'c', date: DateTime(2026, 5, 20), amount: 100, type: ExpenseType.income, categoryId: 'cat-food'),
+      // Giugno
+      _expense(id: 'd', date: DateTime(2026, 6, 2), amount: 50, categoryId: 'cat-food'),
+    ];
+
+    test('chiavi uscite ordinate per totale decrescente, con i colori', () {
+      final t = stackedTrend(
+        expenses,
+        categories: _categories,
+        period: SummaryPeriod.last3Months,
+        granularity: TrendGranularity.month,
+        now: now,
+      );
+      // Uscite: food 80 (30+50) > car 20.
+      expect(t.outcomeKeys.map((s) => s.key), ['cat-food', 'cat-car']);
+      expect(t.outcomeKeys.first.amount, 80);
+      expect(t.outcomeKeys.first.colorHex, '#16A34A');
+      // Entrate: solo food 100.
+      expect(t.incomeKeys.map((s) => s.key), ['cat-food']);
+      expect(t.incomeKeys.single.amount, 100);
+    });
+
+    test('ripartizione per categoria nei singoli bucket (mag, giu)', () {
+      final t = stackedTrend(
+        expenses,
+        categories: _categories,
+        period: SummaryPeriod.last3Months,
+        granularity: TrendGranularity.month,
+        now: now,
+      );
+      // apr, mag, giu (ultimi 3 mesi fino a fine giugno).
+      expect(t.buckets.length, 3);
+      final mag = t.buckets[1];
+      final giu = t.buckets[2];
+      expect(mag.label, 'mag');
+      expect(mag.outcome['cat-food'], 30);
+      expect(mag.outcome['cat-car'], 20);
+      expect(mag.income['cat-food'], 100);
+      expect(mag.outcomeTotal, 50);
+      expect(mag.incomeTotal, 100);
+      expect(mag.balance, 50);
+      expect(giu.outcome['cat-food'], 50);
+      expect(giu.outcome.containsKey('cat-car'), isFalse);
+      expect(giu.balance, -50);
+    });
+
+    test('con una sola categoria selezionata impila per sottocategoria', () {
+      final subExpenses = [
+        _expense(id: 'a', date: DateTime(2026, 6, 4), amount: 10, categoryId: 'cat-food', subcategoryId: 'sub-bar'),
+        _expense(id: 'b', date: DateTime(2026, 6, 8), amount: 25, categoryId: 'cat-food', subcategoryId: 'sub-market'),
+        _expense(id: 'c', date: DateTime(2026, 6, 9), amount: 5, categoryId: 'cat-food'),
+      ];
+      final t = stackedTrend(
+        subExpenses,
+        categories: _categories,
+        period: SummaryPeriod.thisMonth,
+        granularity: TrendGranularity.month,
+        categoryId: 'cat-food',
+        now: now,
+      );
+      // Chiavi = sottocategorie (market 25 > bar 10 > senza 5).
+      expect(t.outcomeKeys.map((s) => s.key), ['sub-market', 'sub-bar', '']);
+      final giu = t.buckets.single;
+      expect(giu.outcome['sub-market'], 25);
+      expect(giu.outcome['sub-bar'], 10);
+      expect(giu.outcome[''], 5);
+    });
+
+    test('isEmpty quando non ci sono movimenti nel periodo', () {
+      final t = stackedTrend(
+        const [],
+        categories: _categories,
+        period: SummaryPeriod.thisMonth,
+        granularity: TrendGranularity.month,
+        now: now,
+      );
+      expect(t.isEmpty, isTrue);
+    });
+  });
 }

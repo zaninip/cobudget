@@ -111,6 +111,8 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
               else
                 _TrendTab(
                   expenses: filtered,
+                  categories: categories,
+                  singleCategoryId: singleCategoryId,
                   period: _period,
                   granularity: TrendGranularity.month,
                   customStart: _customStart,
@@ -506,10 +508,14 @@ class _PieSection extends StatelessWidget {
   }
 }
 
-/// Scheda "Andamento": barre raggruppate con serie selezionabili.
+/// Scheda "Andamento": barre impilate per categoria (uscite/entrate) più la
+/// barra del saldo, con serie selezionabili. Con una sola categoria nei filtri
+/// le barre si suddividono per sottocategoria.
 class _TrendTab extends StatelessWidget {
   const _TrendTab({
     required this.expenses,
+    required this.categories,
+    required this.singleCategoryId,
     required this.period,
     required this.granularity,
     required this.customStart,
@@ -523,6 +529,8 @@ class _TrendTab extends StatelessWidget {
   });
 
   final List<Expense> expenses;
+  final List<ExpenseCategory> categories;
+  final String? singleCategoryId;
   final SummaryPeriod period;
   final TrendGranularity granularity;
   final DateTime? customStart;
@@ -537,14 +545,17 @@ class _TrendTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final buckets = bucketByTime(
+    final trend = stackedTrend(
       expenses,
+      categories: categories,
       period: period,
       granularity: granularity,
+      categoryId: singleCategoryId,
       customStart: customStart,
       customEnd: customEnd,
     );
-    final hasData = buckets.any((b) => !b.isEmpty);
+    final shaded = singleCategoryId != null;
+    final hasData = !trend.isEmpty;
     final anySeries = showOutcome || showIncome || showBalance;
 
     return Column(
@@ -583,22 +594,100 @@ class _TrendTab extends StatelessWidget {
           )
         else ...[
           SummaryTrendChart(
-            buckets: buckets,
+            trend: trend,
+            shaded: shaded,
             showOutcome: showOutcome,
             showIncome: showIncome,
             showBalance: showBalance,
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (showOutcome) _LegendDot(color: scheme.primary, label: 'Uscite'),
-              if (showIncome) _LegendDot(color: context.appColors.success, label: 'Entrate'),
-              if (showBalance) _LegendDot(color: scheme.secondary, label: 'Saldo'),
+              if (showOutcome && trend.outcomeKeys.isNotEmpty)
+                Expanded(
+                  child: _TrendLegendColumn(
+                    title: 'Uscite',
+                    slices: trend.outcomeKeys,
+                    shaded: shaded,
+                  ),
+                ),
+              if (showIncome && trend.incomeKeys.isNotEmpty)
+                Expanded(
+                  child: _TrendLegendColumn(
+                    title: 'Entrate',
+                    slices: trend.incomeKeys,
+                    shaded: shaded,
+                  ),
+                ),
+              if (showBalance)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Saldo',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: _LegendDot(color: scheme.secondary, label: 'Saldo'),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Colonna di legenda dell'andamento: titolo (Uscite/Entrate) e un pallino +
+/// nome per ogni categoria (o sottocategoria), con gli stessi colori delle barre.
+class _TrendLegendColumn extends StatelessWidget {
+  const _TrendLegendColumn({
+    required this.title,
+    required this.slices,
+    required this.shaded,
+  });
+
+  final String title;
+  final List<CategorySlice> slices;
+  final bool shaded;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < slices.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: _LegendDot(
+              color: summarySliceColor(
+                slices[i],
+                i,
+                slices.length,
+                shaded: shaded,
+                neutral: scheme.onSurfaceVariant,
+              ),
+              label: slices[i].label,
+            ),
+          ),
       ],
     );
   }
@@ -702,7 +791,14 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
       ],
     );
   }

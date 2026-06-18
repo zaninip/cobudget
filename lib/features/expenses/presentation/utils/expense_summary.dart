@@ -279,42 +279,7 @@ List<PeriodBucket> bucketByTime(
     }
   }
 
-  // Estremi della timeline: dal periodo se delimitato, altrimenti dai dati.
-  DateTime first;
-  if (range.start != null) {
-    first = _bucketStartOf(range.start!, granularity);
-  } else if (acc.isNotEmpty) {
-    first = acc.keys.reduce((a, b) => a.isBefore(b) ? a : b);
-  } else {
-    first = _bucketStartOf(current, granularity);
-  }
-
-  DateTime lastExclusive;
-  if (range.endExclusive != null) {
-    final lastDay = DateTime(
-      range.endExclusive!.year,
-      range.endExclusive!.month,
-      range.endExclusive!.day - 1,
-    );
-    lastExclusive = _nextBucket(_bucketStartOf(lastDay, granularity), granularity);
-  } else if (acc.isNotEmpty) {
-    final maxStart = acc.keys.reduce((a, b) => a.isAfter(b) ? a : b);
-    lastExclusive = _nextBucket(maxStart, granularity);
-  } else {
-    lastExclusive = _nextBucket(first, granularity);
-  }
-
-  // Inizi dei bucket (anche vuoti) lungo tutta la timeline.
-  final starts = <DateTime>[];
-  var b = first;
-  var guard = 0;
-  while (b.isBefore(lastExclusive) && guard < 600) {
-    starts.add(b);
-    b = _nextBucket(b, granularity);
-    guard++;
-  }
-
-  // Suffisso anno sulle etichette mensili solo se la timeline cambia anno.
+  final starts = _bucketStarts(acc.keys.toSet(), range, current, granularity);
   final multiYear = starts.isNotEmpty && starts.first.year != starts.last.year;
 
   return [
@@ -326,4 +291,150 @@ List<PeriodBucket> bucketByTime(
         income: (acc[s] ?? const [0.0, 0.0])[1],
       ),
   ];
+}
+
+/// Inizi dei bucket (contigui, anche vuoti) che coprono il periodo: dal periodo
+/// se delimitato, altrimenti dagli estremi dei dati ([dataStarts]).
+List<DateTime> _bucketStarts(
+  Set<DateTime> dataStarts,
+  DateRange range,
+  DateTime current,
+  TrendGranularity g,
+) {
+  DateTime first;
+  if (range.start != null) {
+    first = _bucketStartOf(range.start!, g);
+  } else if (dataStarts.isNotEmpty) {
+    first = dataStarts.reduce((a, b) => a.isBefore(b) ? a : b);
+  } else {
+    first = _bucketStartOf(current, g);
+  }
+
+  DateTime lastExclusive;
+  if (range.endExclusive != null) {
+    final lastDay = DateTime(
+      range.endExclusive!.year,
+      range.endExclusive!.month,
+      range.endExclusive!.day - 1,
+    );
+    lastExclusive = _nextBucket(_bucketStartOf(lastDay, g), g);
+  } else if (dataStarts.isNotEmpty) {
+    final maxStart = dataStarts.reduce((a, b) => a.isAfter(b) ? a : b);
+    lastExclusive = _nextBucket(maxStart, g);
+  } else {
+    lastExclusive = _nextBucket(first, g);
+  }
+
+  final starts = <DateTime>[];
+  var b = first;
+  var guard = 0;
+  while (b.isBefore(lastExclusive) && guard < 600) {
+    starts.add(b);
+    b = _nextBucket(b, g);
+    guard++;
+  }
+  return starts;
+}
+
+/// Un bucket temporale con la ripartizione per categoria (o sottocategoria),
+/// separata tra uscite ed entrate. Le mappe sono `chiave -> importo` dove la
+/// chiave e' id categoria/sottocategoria (o '' per il gruppo "senza").
+class StackedBucket {
+  const StackedBucket({
+    required this.start,
+    required this.label,
+    required this.outcome,
+    required this.income,
+  });
+
+  final DateTime start;
+  final String label;
+  final Map<String, double> outcome;
+  final Map<String, double> income;
+
+  double get outcomeTotal => outcome.values.fold(0, (s, v) => s + v);
+  double get incomeTotal => income.values.fold(0, (s, v) => s + v);
+  double get balance => incomeTotal - outcomeTotal;
+}
+
+/// Dati per la scheda "Andamento" con barre impilate per categoria.
+/// [outcomeKeys]/[incomeKeys] danno l'ordine di impilamento, i colori e la
+/// legenda (aggregati sull'intero periodo, dal piu' grande); [buckets] contiene
+/// la ripartizione per ogni bucket temporale.
+class StackedTrend {
+  const StackedTrend({
+    required this.outcomeKeys,
+    required this.incomeKeys,
+    required this.buckets,
+  });
+
+  final List<CategorySlice> outcomeKeys;
+  final List<CategorySlice> incomeKeys;
+  final List<StackedBucket> buckets;
+
+  bool get isEmpty => buckets.every((b) => b.outcomeTotal == 0 && b.incomeTotal == 0);
+}
+
+/// Costruisce l'andamento impilato per categoria. Se [categoryId] e' valorizzato
+/// (una sola categoria nei filtri) impila per **sottocategoria**, come fanno le
+/// torte del riepilogo.
+StackedTrend stackedTrend(
+  List<Expense> expenses, {
+  required List<ExpenseCategory> categories,
+  required SummaryPeriod period,
+  required TrendGranularity granularity,
+  String? categoryId,
+  DateTime? customStart,
+  DateTime? customEnd,
+  DateTime? now,
+}) {
+  final current = now ?? DateTime.now();
+  final range = periodRange(period, current, customStart: customStart, customEnd: customEnd);
+  final filtered = [for (final e in expenses) if (range.contains(e.date)) e];
+
+  // Ordine di impilamento + colori + legenda (sull'intero periodo).
+  final outcomeKeys = breakdownByCategory(
+    filtered,
+    categories: categories,
+    type: ExpenseType.expense,
+    categoryId: categoryId,
+  );
+  final incomeKeys = breakdownByCategory(
+    filtered,
+    categories: categories,
+    type: ExpenseType.income,
+    categoryId: categoryId,
+  );
+
+  final bySubcategory = categoryId != null;
+  String keyOf(Expense e) => bySubcategory ? (e.subcategoryId ?? '') : e.categoryId;
+
+  final outAcc = <DateTime, Map<String, double>>{};
+  final inAcc = <DateTime, Map<String, double>>{};
+  final dataStarts = <DateTime>{};
+  for (final e in filtered) {
+    final b = _bucketStartOf(e.date, granularity);
+    dataStarts.add(b);
+    final target = e.isIncome ? inAcc : outAcc;
+    final m = target.putIfAbsent(b, () => <String, double>{});
+    final k = keyOf(e);
+    m[k] = (m[k] ?? 0) + e.amount;
+  }
+
+  final starts = _bucketStarts(dataStarts, range, current, granularity);
+  final multiYear = starts.isNotEmpty && starts.first.year != starts.last.year;
+
+  return StackedTrend(
+    outcomeKeys: outcomeKeys,
+    incomeKeys: incomeKeys,
+    buckets: [
+      for (final s in starts)
+        StackedBucket(
+          start: s,
+          label: _bucketLabel(s, granularity, multiYear),
+          outcome: outAcc[s] ?? const {},
+          income: inAcc[s] ?? const {},
+        ),
+    ],
+  );
 }
