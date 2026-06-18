@@ -53,6 +53,7 @@ UI_DESIGN.md
 
 # Credenziali locali
 .env
+.key.local
 
 # Flutter DevTools (config locale)
 devtools_options.yaml
