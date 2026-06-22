@@ -13,6 +13,7 @@ import '../../domain/category.dart';
 import '../../domain/expense.dart';
 import '../controllers/manual_expense_controller.dart';
 import '../widgets/category_selector.dart';
+import '../widgets/exceptional_expense_checkbox.dart';
 import '../widgets/month_selector.dart';
 import '../widgets/tag_selector.dart';
 
@@ -40,6 +41,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
   String? _categoryId;
   String? _subcategoryId;
   ExpenseType _type = ExpenseType.expense;
+  bool _isExceptional = false;
   List<String> _tagNames = const [];
 
   @override
@@ -98,6 +100,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         categoryId: _categoryId!,
         subcategoryId: _subcategoryId,
         type: _type,
+        isExceptional: _isExceptional,
         tagNames: _tagNames,
       );
     } else {
@@ -109,6 +112,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         categoryId: _categoryId!,
         subcategoryId: _subcategoryId,
         type: _type,
+        isExceptional: _isExceptional,
         tagNames: _tagNames,
       );
     }
@@ -262,6 +266,11 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
             budgetId: widget.budgetId,
             selectedNames: _tagNames,
             onChanged: (value) => setState(() => _tagNames = value),
+          ),
+          const SizedBox(height: 8),
+          ExceptionalExpenseCheckbox(
+            value: _isExceptional,
+            onChanged: (value) => setState(() => _isExceptional = value),
           ),
           const SizedBox(height: 24),
           LoadingButton(

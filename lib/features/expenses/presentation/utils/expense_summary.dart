@@ -83,14 +83,16 @@ DateRange periodRange(
   }
 }
 
-/// Filtra le voci per periodo, categorie e sottocategorie selezionate.
-/// Set vuoti = nessun vincolo su quella dimensione (tutte).
+/// Filtra le voci per periodo, categorie, sottocategorie e tag selezionate.
+/// Set vuoti = nessun vincolo su quella dimensione (tutte). Con
+/// [excludeExceptional] a true scarta le spese marcate come straordinarie.
 List<Expense> filterExpenses(
   List<Expense> expenses, {
   required SummaryPeriod period,
   Set<String> categoryIds = const {},
   Set<String> subcategoryIds = const {},
   Set<String> tagIds = const {},
+  bool excludeExceptional = false,
   DateTime? customStart,
   DateTime? customEnd,
   DateTime? now,
@@ -104,6 +106,7 @@ List<Expense> filterExpenses(
   return [
     for (final e in expenses)
       if (range.contains(e.date) &&
+          (!excludeExceptional || !e.isExceptional) &&
           (categoryIds.isEmpty || categoryIds.contains(e.categoryId)) &&
           (subcategoryIds.isEmpty ||
               (e.subcategoryId != null && subcategoryIds.contains(e.subcategoryId))) &&

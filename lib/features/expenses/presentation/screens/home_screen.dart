@@ -11,21 +11,38 @@ import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../../domain/expense.dart';
+import '../../domain/tag.dart';
 import '../utils/category_visuals.dart';
+import '../utils/expense_summary.dart';
 import '../widgets/expense_detail_dialog.dart';
+import '../widgets/expense_filters_card.dart';
 
 /// Spese del budget selezionato e accesso al form di inserimento manuale
 /// (vedi UI_DESIGN.md - sezione 3).
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, required this.budgetId});
 
   final String budgetId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  // Stato dei filtri: stesso modello della pagina grafici, senza il periodo
+  // (le box mostrano sempre il mese corrente, la lista sempre tutto lo storico).
+  final Set<String> _categoryIds = {};
+  final Set<String> _subcategoryIds = {};
+  final Set<String> _tagIds = {};
+  bool _excludeExceptional = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final budgetId = widget.budgetId;
     final budget = ref.watch(budgetByIdProvider(budgetId));
     final expensesAsync = ref.watch(recentExpensesProvider(budgetId));
     final categoriesAsync = ref.watch(expenseCategoriesProvider(budgetId));
+    final tagsAsync = ref.watch(tagsProvider(budgetId));
 
     return Scaffold(
       appBar: AppBar(
@@ -64,13 +81,27 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: expensesAsync.when(
         data: (expenses) {
-          final categories = categoriesAsync.value ?? const [];
+          final categories = categoriesAsync.value ?? const <ExpenseCategory>[];
+          final tags = tagsAsync.value ?? const <Tag>[];
+
+          // Filtri (categorie/sottocategorie/tag/straordinarie) applicati su tutto
+          // lo storico: la lista mostra l'elenco filtrato per intero, mentre le box
+          // ripartono dallo stesso elenco ma limitato al mese corrente.
+          final filtered = filterExpenses(
+            expenses,
+            period: SummaryPeriod.all,
+            categoryIds: _categoryIds,
+            subcategoryIds: _subcategoryIds,
+            tagIds: _tagIds,
+            excludeExceptional: _excludeExceptional,
+          );
+
           final now = DateTime.now();
           bool isCurrentMonth(DateTime d) => d.year == now.year && d.month == now.month;
 
           var monthExpenses = 0.0;
           var monthIncome = 0.0;
-          for (final e in expenses) {
+          for (final e in filtered) {
             if (!isCurrentMonth(e.date)) continue;
             if (e.isIncome) {
               monthIncome += e.amount;
@@ -82,6 +113,8 @@ class HomeScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
             children: [
+              _buildFilters(categories, tags),
+              const SizedBox(height: 16),
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -107,18 +140,20 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Text('Ultimi movimenti', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              if (expenses.isEmpty)
+              if (filtered.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Text(
-                    'Nessun movimento registrato',
+                    expenses.isEmpty
+                        ? 'Nessun movimento registrato'
+                        : 'Nessun movimento per i filtri selezionati',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
                 )
               else
-                for (final expense in expenses) ...[
+                for (final expense in filtered) ...[
                   _ExpenseTile(
                     expense: expense,
                     category: _categoryFor(categories, expense.categoryId),
@@ -136,6 +171,47 @@ class HomeScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Nuova spesa'),
       ),
+    );
+  }
+
+  /// Barra filtri (stesso aspetto della pagina grafici, senza il periodo).
+  Widget _buildFilters(List<ExpenseCategory> categories, List<Tag> tags) {
+    void toggleCategory(String id) {
+      setState(() {
+        if (!_categoryIds.remove(id)) _categoryIds.add(id);
+        // Rimuove le sottocategorie non più coerenti con le categorie scelte.
+        final validSubIds = <String>{
+          for (final c in categories)
+            if (_categoryIds.contains(c.id))
+              for (final s in c.subcategories) s.id,
+        };
+        _subcategoryIds.removeWhere((id) => !validSubIds.contains(id));
+      });
+    }
+
+    void toggleSubcategory(String id) {
+      setState(() {
+        if (!_subcategoryIds.remove(id)) _subcategoryIds.add(id);
+      });
+    }
+
+    void toggleTag(String id) {
+      setState(() {
+        if (!_tagIds.remove(id)) _tagIds.add(id);
+      });
+    }
+
+    return ExpenseFiltersCard(
+      categories: categories,
+      tags: tags,
+      categoryIds: _categoryIds,
+      subcategoryIds: _subcategoryIds,
+      tagIds: _tagIds,
+      onToggleCategory: toggleCategory,
+      onToggleSubcategory: toggleSubcategory,
+      onToggleTag: toggleTag,
+      excludeExceptional: _excludeExceptional,
+      onExcludeExceptionalChanged: (v) => setState(() => _excludeExceptional = v),
     );
   }
 
@@ -158,7 +234,7 @@ class HomeScreen extends ConsumerWidget {
               title: const Text('Inserire spesa manuale'),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                context.push('/budget/$budgetId/expenses/new');
+                context.push('/budget/${widget.budgetId}/expenses/new');
               },
             ),
             ListTile(
@@ -170,7 +246,7 @@ class HomeScreen extends ConsumerWidget {
               title: const Text('Inserire da screenshot'),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                context.push('/budget/$budgetId/import');
+                context.push('/budget/${widget.budgetId}/import');
               },
             ),
             const SizedBox(height: 8),

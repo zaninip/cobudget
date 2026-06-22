@@ -12,6 +12,7 @@ class ExtractedExpense {
     this.type = ExpenseType.expense,
     this.categoryId,
     this.subcategoryId,
+    this.isExceptional = false,
     this.tagNames = const [],
     String? sourceTitle,
   }) : sourceTitle = sourceTitle ?? title;
@@ -40,6 +41,10 @@ class ExtractedExpense {
   ExpenseType type;
   String? categoryId;
   String? subcategoryId;
+
+  /// Spesa straordinaria: impostabile in fase di review (parte da false; non
+  /// viene letta dallo screenshot).
+  bool isExceptional;
 
   /// Tag (a testo libero) assegnate in fase di review, sostituite in blocco dal
   /// `TagSelector`. Non vengono lette dallo screenshot: partono vuote.

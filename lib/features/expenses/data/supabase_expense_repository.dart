@@ -60,6 +60,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   }) async {
     final inserted = await _client
@@ -73,6 +74,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
           'category_id': categoryId,
           'subcategory_id': subcategoryId,
           'type': type.name,
+          'is_exceptional': isExceptional,
         })
         .select('id')
         .single();
@@ -98,6 +100,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
           'category_id': item.categoryId,
           'subcategory_id': item.subcategoryId,
           'type': item.type.name,
+          'is_exceptional': item.isExceptional,
           'source': source,
         },
     ];
@@ -123,6 +126,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   }) async {
     final months = <DateTime>[];
@@ -150,6 +154,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
           'subcategory_id': subcategoryId,
           'spread_group_id': spreadGroupId,
           'type': type.name,
+          'is_exceptional': isExceptional,
         },
     ];
 
@@ -206,6 +211,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
     required DateTime date,
     required String categoryId,
     String? subcategoryId,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   }) async {
     await _client.from('expenses').update({
@@ -214,6 +220,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
       'date': _formatDate(date),
       'category_id': categoryId,
       'subcategory_id': subcategoryId,
+      'is_exceptional': isExceptional,
     }).eq('id', id);
     // Le tag passate sostituiscono integralmente quelle precedenti.
     await _client.from('expense_tags').delete().eq('expense_id', id);

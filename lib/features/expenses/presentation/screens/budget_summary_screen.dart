@@ -13,6 +13,7 @@ import '../../domain/category.dart';
 import '../../domain/expense.dart';
 import '../../domain/tag.dart';
 import '../utils/expense_summary.dart';
+import '../widgets/expense_filters_card.dart';
 import '../widgets/summary_pie_chart.dart';
 import '../widgets/summary_trend_chart.dart';
 
@@ -35,6 +36,7 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
   final Set<String> _categoryIds = {};
   final Set<String> _subcategoryIds = {};
   final Set<String> _tagIds = {};
+  bool _excludeExceptional = false;
   int _tabIndex = 0;
 
   // Stato scheda "Andamento". L'andamento è sempre su base mensile.
@@ -89,6 +91,7 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
             categoryIds: _categoryIds,
             subcategoryIds: _subcategoryIds,
             tagIds: _tagIds,
+            excludeExceptional: _excludeExceptional,
             customStart: _customStart,
             customEnd: _customEnd,
           );
@@ -146,11 +149,6 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
     List<ExpenseCategory> categories,
     List<Tag> tags,
   ) {
-    final subOptions = <Subcategory>[
-      for (final c in categories)
-        if (_categoryIds.contains(c.id)) ...c.subcategories,
-    ];
-
     void toggleCategory(String id) {
       setState(() {
         if (!_categoryIds.remove(id)) _categoryIds.add(id);
@@ -176,75 +174,60 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
       });
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DropdownButtonFormField<SummaryPeriod>(
-              initialValue: _period,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Periodo', isDense: true),
-              items: [
-                for (final p in SummaryPeriod.values)
-                  DropdownMenuItem(value: p, child: Text(p.label)),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _period = value);
-                }
-              },
-            ),
-            if (_period == SummaryPeriod.custom) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DateField(
-                      label: 'Da',
-                      value: _customStart,
-                      onTap: () => _pickCustomDate(isStart: true),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _DateField(
-                      label: 'A',
-                      value: _customEnd,
-                      onTap: () => _pickCustomDate(isStart: false),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 14),
-            _FilterChips(
-              label: 'Categorie',
-              options: [for (final c in categories) (id: c.id, name: c.name)],
-              selected: _categoryIds,
-              onToggle: toggleCategory,
-            ),
-            if (subOptions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _FilterChips(
-                label: 'Sottocategorie',
-                options: [for (final s in subOptions) (id: s.id, name: s.name)],
-                selected: _subcategoryIds,
-                onToggle: toggleSubcategory,
-              ),
-            ],
-            const SizedBox(height: 12),
-            // Il filtro Tag c'è sempre (menù a tendina a selezione multipla);
-            // se non ci sono ancora tag, il campo lo segnala ed è disabilitato.
-            _TagFilterMenu(
-              tags: tags,
-              selected: _tagIds,
-              onToggle: toggleTag,
-            ),
+    final periodSection = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<SummaryPeriod>(
+          initialValue: _period,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Periodo', isDense: true),
+          items: [
+            for (final p in SummaryPeriod.values)
+              DropdownMenuItem(value: p, child: Text(p.label)),
           ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _period = value);
+            }
+          },
         ),
-      ),
+        if (_period == SummaryPeriod.custom) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _DateField(
+                  label: 'Da',
+                  value: _customStart,
+                  onTap: () => _pickCustomDate(isStart: true),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _DateField(
+                  label: 'A',
+                  value: _customEnd,
+                  onTap: () => _pickCustomDate(isStart: false),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+
+    return ExpenseFiltersCard(
+      categories: categories,
+      tags: tags,
+      categoryIds: _categoryIds,
+      subcategoryIds: _subcategoryIds,
+      tagIds: _tagIds,
+      onToggleCategory: toggleCategory,
+      onToggleSubcategory: toggleSubcategory,
+      onToggleTag: toggleTag,
+      excludeExceptional: _excludeExceptional,
+      onExcludeExceptionalChanged: (v) => setState(() => _excludeExceptional = v),
+      periodSection: periodSection,
     );
   }
 
@@ -290,125 +273,6 @@ class _DateField extends StatelessWidget {
                 : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-      ),
-    );
-  }
-}
-
-typedef _ChipOption = ({String id, String name});
-
-/// Gruppo di chip a selezione multipla (vuoto = "Tutte").
-class _FilterChips extends StatelessWidget {
-  const _FilterChips({
-    required this.label,
-    required this.options,
-    required this.selected,
-    required this.onToggle,
-  });
-
-  final String label;
-  final List<_ChipOption> options;
-  final Set<String> selected;
-  final ValueChanged<String> onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            for (final o in options)
-              FilterChip(
-                label: Text(o.name),
-                selected: selected.contains(o.id),
-                onSelected: (_) => onToggle(o.id),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Filtro Tag come menù a tendina a selezione multipla (checkbox). Selezione
-/// vuota = "Tutte"; semantica OR coerente con il resto dei filtri. Se non ci
-/// sono tag nel budget, il campo è disabilitato e lo segnala.
-class _TagFilterMenu extends StatelessWidget {
-  const _TagFilterMenu({
-    required this.tags,
-    required this.selected,
-    required this.onToggle,
-  });
-
-  final List<Tag> tags;
-  final Set<String> selected;
-  final ValueChanged<String> onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final empty = tags.isEmpty;
-    final selectedNames =
-        tags.where((t) => selected.contains(t.id)).map((t) => t.name).toList();
-    final text = empty
-        ? 'Nessuna tag ancora'
-        : selectedNames.isEmpty
-            ? 'Tutte'
-            : selectedNames.join(', ');
-    final muted = empty || selectedNames.isEmpty;
-
-    Widget field(VoidCallback? onTap) => InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: InputDecorator(
-            decoration: const InputDecoration(labelText: 'Tag', isDense: true),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: muted ? scheme.onSurfaceVariant : scheme.onSurface,
-                      fontStyle: empty ? FontStyle.italic : FontStyle.normal,
-                    ),
-                  ),
-                ),
-                Icon(Icons.arrow_drop_down, color: scheme.onSurfaceVariant),
-              ],
-            ),
-          ),
-        );
-
-    if (empty) return field(null);
-
-    return MenuAnchor(
-      menuChildren: [
-        for (final t in tags)
-          SizedBox(
-            width: 260,
-            child: CheckboxListTile(
-              value: selected.contains(t.id),
-              onChanged: (_) => onToggle(t.id),
-              title: Text(t.name),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-          ),
-      ],
-      builder: (context, controller, _) => field(
-        () => controller.isOpen ? controller.close() : controller.open(),
       ),
     );
   }

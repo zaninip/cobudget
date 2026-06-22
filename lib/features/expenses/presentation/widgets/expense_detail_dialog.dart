@@ -140,6 +140,26 @@ class ExpenseDetailDialog extends ConsumerWidget {
               ),
             ),
           ],
+          if (expense.isExceptional) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.star_outline,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Spesa straordinaria',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (expense.tagIds.isNotEmpty) _buildTags(context, ref),
         ],
       ),

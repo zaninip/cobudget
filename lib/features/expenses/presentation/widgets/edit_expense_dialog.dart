@@ -8,6 +8,7 @@ import '../../../categorization/presentation/learning_feedback.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/expense.dart';
 import 'category_selector.dart';
+import 'exceptional_expense_checkbox.dart';
 import 'tag_selector.dart';
 
 /// Dialog per modificare titolo e importo di una spesa esistente.
@@ -30,6 +31,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
   late String? _categoryId = widget.expense.categoryId;
   late String? _subcategoryId = widget.expense.subcategoryId;
   late DateTime _date = widget.expense.date;
+  late bool _isExceptional = widget.expense.isExceptional;
   // Inizializzato (lazy) dai tagIds della spesa appena le tag sono caricate.
   List<String>? _tagNames;
 
@@ -84,6 +86,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
             date: _date,
             categoryId: _categoryId!,
             subcategoryId: _subcategoryId,
+            isExceptional: _isExceptional,
             tagNames: _tagNames ?? const [],
           );
       // Alimenta la memoria di categorizzazione con la scelta dell'utente. Best-effort.
@@ -195,6 +198,11 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
                 budgetId: widget.expense.budgetId,
                 selectedNames: _tagNames ?? const [],
                 onChanged: (value) => setState(() => _tagNames = value),
+              ),
+              const SizedBox(height: 4),
+              ExceptionalExpenseCheckbox(
+                value: _isExceptional,
+                onChanged: (value) => setState(() => _isExceptional = value),
               ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),

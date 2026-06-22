@@ -10,6 +10,7 @@ typedef NewExpense = ({
   String categoryId,
   String? subcategoryId,
   ExpenseType type,
+  bool isExceptional,
   List<String> tagNames,
 });
 
@@ -34,6 +35,7 @@ abstract class ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   });
 
@@ -56,6 +58,7 @@ abstract class ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   });
 
@@ -83,6 +86,7 @@ abstract class ExpenseRepository {
     required DateTime date,
     required String categoryId,
     String? subcategoryId,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   });
 

@@ -18,6 +18,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   }) async {
     state = const AsyncLoading();
@@ -30,6 +31,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             type: type,
+            isExceptional: isExceptional,
             tagNames: tagNames,
           );
     });
@@ -48,6 +50,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    bool isExceptional = false,
     List<String> tagNames = const [],
   }) async {
     state = const AsyncLoading();
@@ -61,6 +64,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             type: type,
+            isExceptional: isExceptional,
             tagNames: tagNames,
           );
     });

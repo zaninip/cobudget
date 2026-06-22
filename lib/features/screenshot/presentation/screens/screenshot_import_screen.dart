@@ -15,6 +15,7 @@ import '../../../expenses/data/supabase_expense_repository.dart';
 import '../../../expenses/domain/expense.dart';
 import '../../../expenses/domain/expense_repository.dart';
 import '../../../expenses/presentation/widgets/category_selector.dart';
+import '../../../expenses/presentation/widgets/exceptional_expense_checkbox.dart';
 import '../../../expenses/presentation/widgets/tag_selector.dart';
 import '../../data/supabase_extract_repository.dart';
 import '../../domain/extracted_expense.dart';
@@ -188,6 +189,7 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
             categoryId: e.categoryId!,
             subcategoryId: e.subcategoryId,
             type: e.type,
+            isExceptional: e.isExceptional,
             tagNames: e.tagNames,
           ),
       ];
@@ -585,6 +587,11 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
               budgetId: widget.budgetId,
               selectedNames: item.tagNames,
               onChanged: (v) => setState(() => item.tagNames = v),
+            ),
+            const SizedBox(height: 4),
+            ExceptionalExpenseCheckbox(
+              value: item.isExceptional,
+              onChanged: (v) => setState(() => item.isExceptional = v),
             ),
           ],
         ),

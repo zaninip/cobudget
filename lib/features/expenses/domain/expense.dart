@@ -19,6 +19,7 @@ class Expense {
     this.subcategoryId,
     this.spreadGroupId,
     this.type = ExpenseType.expense,
+    this.isExceptional = false,
     this.tagIds = const [],
   });
 
@@ -33,6 +34,7 @@ class Expense {
       subcategoryId: map['subcategory_id'] as String?,
       spreadGroupId: map['spread_group_id'] as String?,
       type: ExpenseType.fromName(map['type'] as String?),
+      isExceptional: (map['is_exceptional'] as bool?) ?? false,
       // Embedding PostgREST: `expense_tags(tag_id)` -> lista di id tag.
       tagIds: [
         for (final row in (map['expense_tags'] as List?) ?? const [])
@@ -50,6 +52,10 @@ class Expense {
   final String? subcategoryId;
   final String? spreadGroupId;
   final ExpenseType type;
+
+  /// Spesa straordinaria/eccezionale: escludibile dai grafici e dalla lista
+  /// tramite il filtro dedicato.
+  final bool isExceptional;
 
   /// Id delle tag applicate (relazione N-a-N via `expense_tags`).
   final List<String> tagIds;
