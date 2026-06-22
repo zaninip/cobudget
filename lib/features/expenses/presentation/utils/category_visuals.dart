@@ -15,6 +15,9 @@ const _categoryIcons = <String, IconData>{
   'fitness_center': Icons.fitness_center,
   'flight': Icons.flight,
   'local_hospital': Icons.local_hospital,
+  'medication': Icons.medication,
+  'travel_explore': Icons.travel_explore,
+  'luggage': Icons.luggage,
   'build': Icons.build,
   'savings': Icons.savings,
   'card_giftcard': Icons.card_giftcard,
@@ -26,6 +29,11 @@ const _categoryIcons = <String, IconData>{
   'celebration': Icons.celebration,
   'bolt': Icons.bolt,
   'euro': Icons.euro,
+  'star': Icons.star,
+  'sunny': Icons.sunny,
+  'laptop_windows': Icons.laptop_windows,
+  'monitor_heart': Icons.monitor_heart,
+  'bed': Icons.bed,
 };
 
 /// Icone proposte all'utente quando crea una nuova categoria.
@@ -45,6 +53,9 @@ const availableCategoryColors = <String>[
   '#EA580C',
   '#4F46E5',
   '#0D9488',
+  '#92400E',
+  '#CA8A04',
+  '#C026D3',
 ];
 
 IconData categoryIcon(String icon) => _categoryIcons[icon] ?? Icons.category;
