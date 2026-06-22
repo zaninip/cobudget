@@ -60,6 +60,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
   riverpod_generator: 2.6.5
   build_runner: ^2.5.4
   freezed: ^3.1.0
@@ -108,3 +109,18 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Configurazione dell'icona dell'app (sezione a livello radice, NON dentro `flutter:`).
+# Genera le icone con: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  # Icona adattiva Android: sfondo viola pieno (riempie tutto il cerchio) +
+  # simbolo bianco su trasparente (icon_foreground.png).
+  adaptive_icon_background: "#7C3AED"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"

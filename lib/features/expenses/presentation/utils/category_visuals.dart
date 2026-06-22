@@ -25,6 +25,7 @@ const _categoryIcons = <String, IconData>{
   'phone_iphone': Icons.phone_iphone,
   'celebration': Icons.celebration,
   'bolt': Icons.bolt,
+  'euro': Icons.euro,
 };
 
 /// Icone proposte all'utente quando crea una nuova categoria.

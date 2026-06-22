@@ -114,9 +114,10 @@ create policy "members can delete expenses"
 insert into public.categories (budget_id, name, icon, color) values
   (null, 'Alimentari', 'shopping_cart', '#7C3AED'),
   (null, 'Trasporti', 'directions_car', '#2563EB'),
-  (null, 'Casa', 'home', '#16A34A'),
-  (null, 'Salute', 'favorite', '#DC2626'),
+  (null, 'Casa', 'home', '#0891B2'),
+  (null, 'Salute', 'local_hospital', '#DC2626'),
   (null, 'Tempo libero', 'sports_esports', '#F59E0B'),
+  (null, 'Finanza', 'euro', '#16A34A'),
   (null, 'Altro', 'category', '#6B7280');
 
 -- Sottocategorie di default
@@ -141,6 +142,8 @@ join (
     ('Salute', 'Visite mediche'),
     ('Tempo libero', 'Cinema/Eventi'),
     ('Tempo libero', 'Abbonamenti'),
+    ('Finanza', 'Stipendio'),
+    ('Finanza', 'Rimborso'),
     ('Altro', 'Varie')
 ) as sub (category_name, name)
   on cat.name = sub.category_name;
