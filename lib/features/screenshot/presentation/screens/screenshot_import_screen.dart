@@ -15,6 +15,7 @@ import '../../../expenses/data/supabase_expense_repository.dart';
 import '../../../expenses/domain/expense.dart';
 import '../../../expenses/domain/expense_repository.dart';
 import '../../../expenses/presentation/widgets/category_selector.dart';
+import '../../../expenses/presentation/widgets/tag_selector.dart';
 import '../../data/supabase_extract_repository.dart';
 import '../../domain/extracted_expense.dart';
 import '../utils/dedup.dart';
@@ -187,6 +188,7 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
             categoryId: e.categoryId!,
             subcategoryId: e.subcategoryId,
             type: e.type,
+            tagNames: e.tagNames,
           ),
       ];
       await ref
@@ -196,6 +198,7 @@ class _ScreenshotImportScreenState extends ConsumerState<ScreenshotImportScreen>
       // sia l'origine: suggerimento Claude accettato, appreso o scelto a mano).
       final learningOk = await _recordLearning(_items);
       ref.invalidate(recentExpensesProvider(widget.budgetId));
+      ref.invalidate(tagsProvider(widget.budgetId));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -576,6 +579,12 @@ class _ReviewCardState extends ConsumerState<_ReviewCard> {
                 item.subcategoryId = null;
               }),
               onSubcategoryChanged: (v) => setState(() => item.subcategoryId = v),
+            ),
+            const SizedBox(height: 12),
+            TagSelector(
+              budgetId: widget.budgetId,
+              selectedNames: item.tagNames,
+              onChanged: (v) => setState(() => item.tagNames = v),
             ),
           ],
         ),

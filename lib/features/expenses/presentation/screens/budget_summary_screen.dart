@@ -11,6 +11,7 @@ import '../../../budget/data/supabase_budget_repository.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../../domain/expense.dart';
+import '../../domain/tag.dart';
 import '../utils/expense_summary.dart';
 import '../widgets/summary_pie_chart.dart';
 import '../widgets/summary_trend_chart.dart';
@@ -33,6 +34,7 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
   DateTime? _customEnd;
   final Set<String> _categoryIds = {};
   final Set<String> _subcategoryIds = {};
+  final Set<String> _tagIds = {};
   int _tabIndex = 0;
 
   // Stato scheda "Andamento". L'andamento è sempre su base mensile.
@@ -45,6 +47,7 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
     final budget = ref.watch(budgetByIdProvider(widget.budgetId));
     final expensesAsync = ref.watch(recentExpensesProvider(widget.budgetId));
     final categoriesAsync = ref.watch(expenseCategoriesProvider(widget.budgetId));
+    final tagsAsync = ref.watch(tagsProvider(widget.budgetId));
 
     return Scaffold(
       appBar: AppBar(
@@ -79,11 +82,13 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
       body: expensesAsync.when(
         data: (expenses) {
           final categories = categoriesAsync.value ?? const <ExpenseCategory>[];
+          final tags = tagsAsync.value ?? const <Tag>[];
           final filtered = filterExpenses(
             expenses,
             period: _period,
             categoryIds: _categoryIds,
             subcategoryIds: _subcategoryIds,
+            tagIds: _tagIds,
             customStart: _customStart,
             customEnd: _customEnd,
           );
@@ -94,7 +99,7 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
             // telefono) così l'ultima riga non resta coperta.
             padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + MediaQuery.paddingOf(context).bottom),
             children: [
-              _buildFilters(context, categories),
+              _buildFilters(context, categories, tags),
               const SizedBox(height: 16),
               _TabPill(
                 tabs: const ['Riepilogo', 'Andamento'],
@@ -136,7 +141,11 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
 
   /// Barra filtri condivisa: periodo (con opzione personalizzata), categorie e
   /// sottocategorie (queste ultime limitate alle categorie selezionate).
-  Widget _buildFilters(BuildContext context, List<ExpenseCategory> categories) {
+  Widget _buildFilters(
+    BuildContext context,
+    List<ExpenseCategory> categories,
+    List<Tag> tags,
+  ) {
     final subOptions = <Subcategory>[
       for (final c in categories)
         if (_categoryIds.contains(c.id)) ...c.subcategories,
@@ -158,6 +167,12 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
     void toggleSubcategory(String id) {
       setState(() {
         if (!_subcategoryIds.remove(id)) _subcategoryIds.add(id);
+      });
+    }
+
+    void toggleTag(String id) {
+      setState(() {
+        if (!_tagIds.remove(id)) _tagIds.add(id);
       });
     }
 
@@ -219,6 +234,14 @@ class _BudgetSummaryScreenState extends ConsumerState<BudgetSummaryScreen> {
                 onToggle: toggleSubcategory,
               ),
             ],
+            const SizedBox(height: 12),
+            // Il filtro Tag c'è sempre (menù a tendina a selezione multipla);
+            // se non ci sono ancora tag, il campo lo segnala ed è disabilitato.
+            _TagFilterMenu(
+              tags: tags,
+              selected: _tagIds,
+              onToggle: toggleTag,
+            ),
           ],
         ),
       ),
@@ -313,6 +336,80 @@ class _FilterChips extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Filtro Tag come menù a tendina a selezione multipla (checkbox). Selezione
+/// vuota = "Tutte"; semantica OR coerente con il resto dei filtri. Se non ci
+/// sono tag nel budget, il campo è disabilitato e lo segnala.
+class _TagFilterMenu extends StatelessWidget {
+  const _TagFilterMenu({
+    required this.tags,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  final List<Tag> tags;
+  final Set<String> selected;
+  final ValueChanged<String> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final empty = tags.isEmpty;
+    final selectedNames =
+        tags.where((t) => selected.contains(t.id)).map((t) => t.name).toList();
+    final text = empty
+        ? 'Nessuna tag ancora'
+        : selectedNames.isEmpty
+            ? 'Tutte'
+            : selectedNames.join(', ');
+    final muted = empty || selectedNames.isEmpty;
+
+    Widget field(VoidCallback? onTap) => InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: InputDecorator(
+            decoration: const InputDecoration(labelText: 'Tag', isDense: true),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: muted ? scheme.onSurfaceVariant : scheme.onSurface,
+                      fontStyle: empty ? FontStyle.italic : FontStyle.normal,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        );
+
+    if (empty) return field(null);
+
+    return MenuAnchor(
+      menuChildren: [
+        for (final t in tags)
+          SizedBox(
+            width: 260,
+            child: CheckboxListTile(
+              value: selected.contains(t.id),
+              onChanged: (_) => onToggle(t.id),
+              title: Text(t.name),
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+          ),
+      ],
+      builder: (context, controller, _) => field(
+        () => controller.isOpen ? controller.close() : controller.open(),
+      ),
     );
   }
 }

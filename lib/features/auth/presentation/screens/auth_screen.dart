@@ -20,19 +20,33 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  int _lastTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// Al passaggio tra Accedi e Registrati svuota i campi e azzera la validazione,
+  /// così la scheda nuova parte pulita. Il listener scatta più volte durante
+  /// l'animazione: agiamo solo quando l'indice cambia davvero.
+  void _onTabChanged() {
+    if (_tabController.index == _lastTabIndex) return;
+    _lastTabIndex = _tabController.index;
+    _emailController.clear();
+    _passwordController.clear();
+    _formKey.currentState?.reset();
   }
 
   void _submit() {

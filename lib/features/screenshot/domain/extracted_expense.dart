@@ -12,6 +12,7 @@ class ExtractedExpense {
     this.type = ExpenseType.expense,
     this.categoryId,
     this.subcategoryId,
+    this.tagNames = const [],
     String? sourceTitle,
   }) : sourceTitle = sourceTitle ?? title;
 
@@ -39,4 +40,8 @@ class ExtractedExpense {
   ExpenseType type;
   String? categoryId;
   String? subcategoryId;
+
+  /// Tag (a testo libero) assegnate in fase di review, sostituite in blocco dal
+  /// `TagSelector`. Non vengono lette dallo screenshot: partono vuote.
+  List<String> tagNames;
 }

@@ -18,6 +18,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    List<String> tagNames = const [],
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -29,10 +30,12 @@ class ManualExpenseController extends AsyncNotifier<void> {
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             type: type,
+            tagNames: tagNames,
           );
     });
     if (!state.hasError) {
       ref.invalidate(recentExpensesProvider(budgetId));
+      ref.invalidate(tagsProvider(budgetId));
     }
   }
 
@@ -45,6 +48,7 @@ class ManualExpenseController extends AsyncNotifier<void> {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    List<String> tagNames = const [],
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -57,10 +61,12 @@ class ManualExpenseController extends AsyncNotifier<void> {
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             type: type,
+            tagNames: tagNames,
           );
     });
     if (!state.hasError) {
       ref.invalidate(recentExpensesProvider(budgetId));
+      ref.invalidate(tagsProvider(budgetId));
     }
   }
 }

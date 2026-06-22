@@ -42,6 +42,16 @@ android {
             )
         }
     }
+
+    // Nome personalizzato dell'APK: "coBudget-<versionName>.apk" (es. coBudget-1.0.0.apk)
+    // al posto del generico app-release.apk. Il file resta sotto build/ (ignorato da git).
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = "coBudget-${variant.versionName}.apk"
+        }
+    }
 }
 
 flutter {

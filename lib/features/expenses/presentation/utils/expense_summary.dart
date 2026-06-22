@@ -90,6 +90,7 @@ List<Expense> filterExpenses(
   required SummaryPeriod period,
   Set<String> categoryIds = const {},
   Set<String> subcategoryIds = const {},
+  Set<String> tagIds = const {},
   DateTime? customStart,
   DateTime? customEnd,
   DateTime? now,
@@ -105,7 +106,9 @@ List<Expense> filterExpenses(
       if (range.contains(e.date) &&
           (categoryIds.isEmpty || categoryIds.contains(e.categoryId)) &&
           (subcategoryIds.isEmpty ||
-              (e.subcategoryId != null && subcategoryIds.contains(e.subcategoryId))))
+              (e.subcategoryId != null && subcategoryIds.contains(e.subcategoryId))) &&
+          // Semantica OR: la voce rientra se ha almeno una delle tag selezionate.
+          (tagIds.isEmpty || e.tagIds.any(tagIds.contains)))
         e,
   ];
 }

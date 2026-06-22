@@ -1,5 +1,6 @@
 import 'category.dart';
 import 'expense.dart';
+import 'tag.dart';
 
 /// Dati di una nuova voce da inserire in blocco (usato dall'import da screenshot).
 typedef NewExpense = ({
@@ -9,6 +10,7 @@ typedef NewExpense = ({
   String categoryId,
   String? subcategoryId,
   ExpenseType type,
+  List<String> tagNames,
 });
 
 /// Astrazione su categorie e spese di un budget (vedi ARCHITECTURE.md - flow 4).
@@ -16,6 +18,9 @@ abstract class ExpenseRepository {
   /// Categorie visibili per il budget (globali + specifiche del budget),
   /// ciascuna con le proprie sottocategorie.
   Future<List<ExpenseCategory>> getCategories(String budgetId);
+
+  /// Le tag definite nel budget (dizionario per autocomplete e filtri).
+  Future<List<Tag>> getTags(String budgetId);
 
   /// Tutte le spese del budget, ordinate per data decrescente.
   Future<List<Expense>> getRecentExpenses(String budgetId);
@@ -29,6 +34,7 @@ abstract class ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    List<String> tagNames = const [],
   });
 
   /// Inserisce in blocco N voci nel budget [budgetId] con la `source` indicata
@@ -50,6 +56,7 @@ abstract class ExpenseRepository {
     required String categoryId,
     String? subcategoryId,
     ExpenseType type = ExpenseType.expense,
+    List<String> tagNames = const [],
   });
 
   /// Crea una nuova categoria specifica del budget [budgetId].
@@ -66,14 +73,17 @@ abstract class ExpenseRepository {
     required String name,
   });
 
-  /// Aggiorna titolo, importo, data, categoria e sottocategoria di una spesa esistente.
+  /// Aggiorna titolo, importo, data, categoria, sottocategoria e tag di una spesa
+  /// esistente. Le tag passate sostituiscono integralmente quelle precedenti.
   Future<void> updateExpense({
     required String id,
+    required String budgetId,
     required String title,
     required double amount,
     required DateTime date,
     required String categoryId,
     String? subcategoryId,
+    List<String> tagNames = const [],
   });
 
   /// Elimina una singola spesa.

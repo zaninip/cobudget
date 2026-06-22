@@ -8,6 +8,7 @@ import '../../../categorization/presentation/learning_feedback.dart';
 import '../../data/supabase_expense_repository.dart';
 import '../../domain/expense.dart';
 import 'category_selector.dart';
+import 'tag_selector.dart';
 
 /// Dialog per modificare titolo e importo di una spesa esistente.
 class EditExpenseDialog extends ConsumerStatefulWidget {
@@ -29,6 +30,8 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
   late String? _categoryId = widget.expense.categoryId;
   late String? _subcategoryId = widget.expense.subcategoryId;
   late DateTime _date = widget.expense.date;
+  // Inizializzato (lazy) dai tagIds della spesa appena le tag sono caricate.
+  List<String>? _tagNames;
 
   bool _isSaving = false;
   String? _errorMessage;
@@ -75,11 +78,13 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
       final title = _titleController.text.trim();
       await ref.read(expenseRepositoryProvider).updateExpense(
             id: widget.expense.id,
+            budgetId: widget.expense.budgetId,
             title: title,
             amount: parseAmount(_amountController.text)!,
             date: _date,
             categoryId: _categoryId!,
             subcategoryId: _subcategoryId,
+            tagNames: _tagNames ?? const [],
           );
       // Alimenta la memoria di categorizzazione con la scelta dell'utente. Best-effort.
       var learningOk = true;
@@ -94,6 +99,7 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
         learningOk = false;
       }
       ref.invalidate(recentExpensesProvider(widget.expense.budgetId));
+      ref.invalidate(tagsProvider(widget.expense.budgetId));
       if (mounted) {
         if (!learningOk) showLearningWarning(context);
         Navigator.of(context).pop();
@@ -109,6 +115,16 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(expenseCategoriesProvider(widget.expense.budgetId));
+    final tagsAsync = ref.watch(tagsProvider(widget.expense.budgetId));
+    // Risolve i tagIds della spesa nei rispettivi nomi, una volta sole appena
+    // le tag del budget sono disponibili.
+    if (_tagNames == null && tagsAsync.hasValue) {
+      final nameById = {for (final t in tagsAsync.value!) t.id: t.name};
+      _tagNames = [
+        for (final id in widget.expense.tagIds)
+          if (nameById[id] != null) nameById[id]!,
+      ];
+    }
 
     return AlertDialog(
       title: const Text('Modifica spesa'),
@@ -173,6 +189,12 @@ class _EditExpenseDialogState extends ConsumerState<EditExpenseDialog> {
                   child: CircularProgressIndicator(),
                 )),
                 error: (error, _) => Text('Errore nel caricamento delle categorie: $error'),
+              ),
+              const SizedBox(height: 16),
+              TagSelector(
+                budgetId: widget.expense.budgetId,
+                selectedNames: _tagNames ?? const [],
+                onChanged: (value) => setState(() => _tagNames = value),
               ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),

@@ -14,6 +14,7 @@ import '../../domain/expense.dart';
 import '../controllers/manual_expense_controller.dart';
 import '../widgets/category_selector.dart';
 import '../widgets/month_selector.dart';
+import '../widgets/tag_selector.dart';
 
 /// Form di inserimento manuale di una spesa, con toggle "spalma su più mesi"
 /// (vedi ARCHITECTURE.md - flow 4, UI_DESIGN.md - sezione 5).
@@ -39,6 +40,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
   String? _categoryId;
   String? _subcategoryId;
   ExpenseType _type = ExpenseType.expense;
+  List<String> _tagNames = const [];
 
   @override
   void initState() {
@@ -96,6 +98,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         categoryId: _categoryId!,
         subcategoryId: _subcategoryId,
         type: _type,
+        tagNames: _tagNames,
       );
     } else {
       controller.addExpense(
@@ -106,6 +109,7 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
         categoryId: _categoryId!,
         subcategoryId: _subcategoryId,
         type: _type,
+        tagNames: _tagNames,
       );
     }
   }
@@ -252,6 +256,12 @@ class _ManualExpenseScreenState extends ConsumerState<ManualExpenseScreen> {
               _subcategoryId = null;
             }),
             onSubcategoryChanged: (value) => setState(() => _subcategoryId = value),
+          ),
+          const SizedBox(height: 16),
+          TagSelector(
+            budgetId: widget.budgetId,
+            selectedNames: _tagNames,
+            onChanged: (value) => setState(() => _tagNames = value),
           ),
           const SizedBox(height: 24),
           LoadingButton(

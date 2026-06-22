@@ -10,6 +10,7 @@ Expense _expense({
   ExpenseType type = ExpenseType.expense,
   String categoryId = 'cat-food',
   String? subcategoryId,
+  List<String> tagIds = const [],
 }) {
   return Expense(
     id: id,
@@ -20,6 +21,7 @@ Expense _expense({
     categoryId: categoryId,
     subcategoryId: subcategoryId,
     type: type,
+    tagIds: tagIds,
   );
 }
 
@@ -100,6 +102,51 @@ void main() {
         now: now,
       );
       expect(result.map((e) => e.id), ['a', 'b']);
+    });
+
+    group('filtro per tag (OR)', () {
+      final tagged = [
+        _expense(id: 'a', date: now, amount: 10, tagIds: ['t-viaggio']),
+        _expense(id: 'b', date: now, amount: 20, tagIds: ['t-regalo', 't-viaggio']),
+        _expense(id: 'c', date: now, amount: 30, tagIds: ['t-regalo']),
+        _expense(id: 'd', date: now, amount: 40), // senza tag
+      ];
+
+      test('set vuoto = nessun vincolo (tutte)', () {
+        final result = filterExpenses(tagged, period: SummaryPeriod.all, now: now);
+        expect(result.map((e) => e.id), ['a', 'b', 'c', 'd']);
+      });
+
+      test('una sola tag seleziona chi la possiede', () {
+        final result = filterExpenses(
+          tagged,
+          period: SummaryPeriod.all,
+          tagIds: {'t-viaggio'},
+          now: now,
+        );
+        expect(result.map((e) => e.id), ['a', 'b']);
+      });
+
+      test('più tag = OR (almeno una)', () {
+        final result = filterExpenses(
+          tagged,
+          period: SummaryPeriod.all,
+          tagIds: {'t-viaggio', 't-regalo'},
+          now: now,
+        );
+        expect(result.map((e) => e.id), ['a', 'b', 'c']);
+      });
+
+      test('con un filtro tag attivo le voci senza tag sono escluse', () {
+        final result = filterExpenses(
+          tagged,
+          period: SummaryPeriod.all,
+          tagIds: {'t-regalo'},
+          now: now,
+        );
+        expect(result.map((e) => e.id), ['b', 'c']);
+        expect(result.map((e) => e.id), isNot(contains('d')));
+      });
     });
   });
 

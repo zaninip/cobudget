@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/amount_text.dart';
+import '../../data/supabase_expense_repository.dart';
 import '../../domain/category.dart';
 import '../../domain/expense.dart';
 import '../utils/category_visuals.dart';
@@ -10,7 +12,7 @@ import 'delete_expense_dialog.dart';
 import 'edit_expense_dialog.dart';
 
 /// Dettaglio di una spesa, con accesso a modifica ed eliminazione.
-class ExpenseDetailDialog extends StatelessWidget {
+class ExpenseDetailDialog extends ConsumerWidget {
   const ExpenseDetailDialog({super.key, required this.expense, required this.category});
 
   final Expense expense;
@@ -36,8 +38,47 @@ class ExpenseDetailDialog extends StatelessWidget {
     );
   }
 
+  /// Ultima riga del dettaglio: icona tag classica + le tag della spesa come chip.
+  /// Risolve i tagIds nei nomi via `tagsProvider`; le tag non ancora risolte
+  /// (provider in loading/errore) vengono omesse.
+  Widget _buildTags(BuildContext context, WidgetRef ref) {
+    final tags = ref.watch(tagsProvider(expense.budgetId)).value ?? const [];
+    final nameById = {for (final t in tags) t.id: t.name};
+    final names = [
+      for (final id in expense.tagIds)
+        if (nameById[id] != null) nameById[id]!,
+    ];
+    if (names.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.label_outline, size: 20, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final name in names)
+                  Chip(
+                    label: Text(name),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     Subcategory? subcategory;
     if (category != null && expense.subcategoryId != null) {
       for (final sub in category!.subcategories) {
@@ -99,6 +140,7 @@ class ExpenseDetailDialog extends StatelessWidget {
               ),
             ),
           ],
+          if (expense.tagIds.isNotEmpty) _buildTags(context, ref),
         ],
       ),
       actions: [

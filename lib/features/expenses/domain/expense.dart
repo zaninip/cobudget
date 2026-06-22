@@ -19,6 +19,7 @@ class Expense {
     this.subcategoryId,
     this.spreadGroupId,
     this.type = ExpenseType.expense,
+    this.tagIds = const [],
   });
 
   factory Expense.fromMap(Map<String, dynamic> map) {
@@ -32,6 +33,11 @@ class Expense {
       subcategoryId: map['subcategory_id'] as String?,
       spreadGroupId: map['spread_group_id'] as String?,
       type: ExpenseType.fromName(map['type'] as String?),
+      // Embedding PostgREST: `expense_tags(tag_id)` -> lista di id tag.
+      tagIds: [
+        for (final row in (map['expense_tags'] as List?) ?? const [])
+          (row as Map)['tag_id'] as String,
+      ],
     );
   }
 
@@ -44,6 +50,9 @@ class Expense {
   final String? subcategoryId;
   final String? spreadGroupId;
   final ExpenseType type;
+
+  /// Id delle tag applicate (relazione N-a-N via `expense_tags`).
+  final List<String> tagIds;
 
   bool get isIncome => type == ExpenseType.income;
 }
