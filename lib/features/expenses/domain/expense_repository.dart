@@ -70,6 +70,21 @@ abstract class ExpenseRepository {
     required String color,
   });
 
+  /// Aggiorna nome, icona e colore di una categoria esistente.
+  ///
+  /// Se [category] è una predefinita/globale non viene modificata in place (cambierebbe
+  /// per tutti i budget): si crea una copia legata a [budgetId] e si ri-agganciano le
+  /// spese e la memoria di categorizzazione di quel budget alla copia. Per le categorie
+  /// del budget l'aggiornamento è diretto. Le spese restano collegate (via id), quindi
+  /// non vengono mai perse.
+  Future<void> updateCategory({
+    required String budgetId,
+    required ExpenseCategory category,
+    required String name,
+    required String icon,
+    required String color,
+  });
+
   /// Crea una nuova sottocategoria sotto [categoryId].
   Future<Subcategory> createSubcategory({
     required String categoryId,

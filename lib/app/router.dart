@@ -7,6 +7,7 @@ import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/budget/presentation/screens/budgets_dashboard_screen.dart';
 import '../features/budget/presentation/screens/settings_screen.dart';
 import '../features/expenses/presentation/screens/budget_summary_screen.dart';
+import '../features/expenses/presentation/screens/category_management_screen.dart';
 import '../features/expenses/presentation/screens/home_screen.dart';
 import '../features/expenses/presentation/screens/manual_expense_screen.dart';
 import '../features/screenshot/presentation/screens/screenshot_import_screen.dart';
@@ -59,6 +60,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'expense-new',
         builder: (context, state) =>
             ManualExpenseScreen(budgetId: state.pathParameters['budgetId']!),
+      ),
+      GoRoute(
+        path: '/budget/:budgetId/categories',
+        name: 'budget-categories',
+        builder: (context, state) =>
+            CategoryManagementScreen(budgetId: state.pathParameters['budgetId']!),
       ),
       GoRoute(
         path: '/budget/:budgetId/import',

@@ -23,9 +23,17 @@ class SupabaseExpenseRepository implements ExpenseRepository {
         .order('created_at')
         .order('created_at', referencedTable: 'subcategories');
 
-    return (result as List)
+    final categories = (result as List)
         .map((e) => ExpenseCategory.fromMap(e as Map<String, dynamic>))
         .toList();
+
+    // Una globale "forkata" dal budget viene oscurata dalla sua copia budget-specifica:
+    // mostriamo solo la copia, non il duplicato globale.
+    final overridden = categories
+        .map((c) => c.overridesCategoryId)
+        .whereType<String>()
+        .toSet();
+    return categories.where((c) => !overridden.contains(c.id)).toList();
   }
 
   @override
@@ -89,30 +97,47 @@ class SupabaseExpenseRepository implements ExpenseRepository {
   }) async {
     if (items.isEmpty) return;
     final userId = _client.auth.currentUser!.id;
+    // Un identificatore di correlazione per ogni voce: lo rispedisce il DB nella
+    // select, così riabbino i tag alla riga giusta tramite client_ref invece che
+    // per posizione (l'ordine di ritorno di PostgREST non è garantito).
+    final refs = [for (final _ in items) _uuid.v4()];
     final rows = [
-      for (final item in items)
+      for (var i = 0; i < items.length; i++)
         {
           'budget_id': budgetId,
           'user_id': userId,
-          'title': item.title,
-          'amount': item.amount,
-          'date': _formatDate(item.date),
-          'category_id': item.categoryId,
-          'subcategory_id': item.subcategoryId,
-          'type': item.type.name,
-          'is_exceptional': item.isExceptional,
+          'title': items[i].title,
+          'amount': items[i].amount,
+          'date': _formatDate(items[i].date),
+          'category_id': items[i].categoryId,
+          'subcategory_id': items[i].subcategoryId,
+          'type': items[i].type.name,
+          'is_exceptional': items[i].isExceptional,
           'source': source,
+          'client_ref': refs[i],
         },
     ];
-    // `.select('id')` restituisce gli id nello stesso ordine delle righe inviate,
-    // così posso collegare i tag della voce corrispondente.
-    final inserted = await _client.from('expenses').insert(rows).select('id');
-    for (var i = 0; i < items.length; i++) {
-      await _attachTags(
-        (inserted[i] as Map)['id'] as String,
-        budgetId,
-        items[i].tagNames,
-      );
+    final inserted =
+        await _client.from('expenses').insert(rows).select('id, client_ref');
+    // Mappa client_ref -> id reale: riabbinamento esplicito, indipendente dall'ordine.
+    final idByRef = {
+      for (final row in inserted as List)
+        (row as Map)['client_ref'] as String: row['id'] as String,
+    };
+
+    // Risolvo l'unione di tutti i nomi una sola volta (no N+1) e inserisco le
+    // righe di expense_tags di tutte le voci in un'unica chiamata.
+    final idByLower = await _resolveTagIdMap(
+      budgetId,
+      [for (final item in items) ...item.tagNames],
+    );
+    final tagRows = <Map<String, dynamic>>[
+      for (var i = 0; i < items.length; i++)
+        for (final tagId in _tagIdsFor(items[i].tagNames, idByLower))
+          {'expense_id': idByRef[refs[i]]!, 'tag_id': tagId},
+    ];
+    if (tagRows.isNotEmpty) {
+      await _client.from('expense_tags').insert(tagRows);
     }
   }
 
@@ -160,15 +185,14 @@ class SupabaseExpenseRepository implements ExpenseRepository {
 
     // Gli stessi tag vengono applicati a tutte le rate della spesa spalmata.
     final inserted = await _client.from('expenses').insert(rows).select('id');
-    if (tagNames.isNotEmpty) {
-      final tagIds = await _resolveTagIds(budgetId, tagNames);
-      if (tagIds.isNotEmpty) {
-        await _client.from('expense_tags').insert([
-          for (final row in inserted)
-            for (final tagId in tagIds)
-              {'expense_id': (row as Map)['id'] as String, 'tag_id': tagId},
-        ]);
-      }
+    final idByLower = await _resolveTagIdMap(budgetId, tagNames);
+    final tagIds = _tagIdsFor(tagNames, idByLower);
+    if (tagIds.isNotEmpty) {
+      await _client.from('expense_tags').insert([
+        for (final row in inserted)
+          for (final tagId in tagIds)
+            {'expense_id': (row as Map)['id'] as String, 'tag_id': tagId},
+      ]);
     }
   }
 
@@ -186,6 +210,31 @@ class SupabaseExpenseRepository implements ExpenseRepository {
         .single();
 
     return ExpenseCategory.fromMap({...result, 'subcategories': const []});
+  }
+
+  @override
+  Future<void> updateCategory({
+    required String budgetId,
+    required ExpenseCategory category,
+    required String name,
+    required String icon,
+    required String color,
+  }) async {
+    if (category.isGlobal) {
+      // Predefinita: fork in una copia legata al budget (atomico, lato Postgres).
+      await _client.rpc('fork_category', params: {
+        'p_budget_id': budgetId,
+        'p_category_id': category.id,
+        'p_name': name,
+        'p_icon': icon,
+        'p_color': color,
+      });
+    } else {
+      await _client
+          .from('categories')
+          .update({'name': name, 'icon': icon, 'color': color})
+          .eq('id', category.id);
+    }
   }
 
   @override
@@ -240,17 +289,23 @@ class SupabaseExpenseRepository implements ExpenseRepository {
   /// Collega [tagNames] alla spesa [expenseId]: risolve i nomi in id (creando le
   /// tag mancanti) e inserisce le righe in `expense_tags`. No-op se non ci sono tag.
   Future<void> _attachTags(String expenseId, String budgetId, List<String> tagNames) async {
-    final tagIds = await _resolveTagIds(budgetId, tagNames);
+    final idByLower = await _resolveTagIdMap(budgetId, tagNames);
+    final tagIds = _tagIdsFor(tagNames, idByLower);
     if (tagIds.isEmpty) return;
     await _client.from('expense_tags').insert([
       for (final tagId in tagIds) {'expense_id': expenseId, 'tag_id': tagId},
     ]);
   }
 
-  /// Risolve i nomi delle tag in id per il budget indicato, creando le tag non
-  /// ancora esistenti. Normalizza con trim e deduplica case-insensitive (coerente
-  /// con l'indice unico `(budget_id, lower(name))` della migrazione 0010).
-  Future<List<String>> _resolveTagIds(String budgetId, List<String> tagNames) async {
+  /// Risolve l'insieme di [tagNames] in una mappa `lower(name) -> id` per il
+  /// budget indicato, creando le tag non ancora esistenti. Normalizza con trim e
+  /// deduplica case-insensitive (coerente con l'indice unico `(budget_id, lower(name))`
+  /// della migrazione 0010). Una sola lettura e al più un solo insert per l'intero
+  /// insieme: chiamarla una volta evita le query N+1 sui batch.
+  Future<Map<String, String>> _resolveTagIdMap(
+    String budgetId,
+    Iterable<String> tagNames,
+  ) async {
     // Dedup case-insensitive mantenendo il primo nome (col suo casing) per i nuovi.
     final wanted = <String, String>{}; // lower(name) -> name
     for (final raw in tagNames) {
@@ -258,7 +313,7 @@ class SupabaseExpenseRepository implements ExpenseRepository {
       if (name.isEmpty) continue;
       wanted.putIfAbsent(name.toLowerCase(), () => name);
     }
-    if (wanted.isEmpty) return const [];
+    if (wanted.isEmpty) return const {};
 
     final existing = await _client
         .from('tags')
@@ -281,10 +336,20 @@ class SupabaseExpenseRepository implements ExpenseRepository {
       }
     }
 
-    return [
-      for (final key in wanted.keys)
-        if (idByLower[key] != null) idByLower[key]!,
-    ];
+    return idByLower;
+  }
+
+  /// Traduce i nomi di tag di una singola voce negli id corrispondenti usando la
+  /// mappa di [_resolveTagIdMap]. Mantiene l'ordine e deduplica (coerente con la
+  /// dedup case-insensitive a monte).
+  List<String> _tagIdsFor(List<String> tagNames, Map<String, String> idByLower) {
+    final ids = <String>[];
+    final seen = <String>{};
+    for (final raw in tagNames) {
+      final id = idByLower[raw.trim().toLowerCase()];
+      if (id != null && seen.add(id)) ids.add(id);
+    }
+    return ids;
   }
 
   String _formatDate(DateTime date) {

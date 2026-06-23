@@ -3,14 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/loading_button.dart';
 import '../../data/supabase_expense_repository.dart';
+import '../../domain/category.dart';
 import '../utils/category_visuals.dart';
 
-/// Dialog per la creazione di una nuova categoria (nome, icona, colore),
-/// vedi ARCHITECTURE.md - flow 4.
+/// Dialog per creare una nuova categoria oppure modificarne una esistente
+/// (nome, icona, colore), vedi ARCHITECTURE.md - flow 4.
+///
+/// Se [category] è valorizzata il dialog è in modalità modifica: i campi sono
+/// precompilati e al salvataggio viene aggiornata (le predefinite vengono "forkate"
+/// in una copia legata al budget, senza perdere le spese collegate).
 class NewCategoryDialog extends ConsumerStatefulWidget {
-  const NewCategoryDialog({super.key, required this.budgetId});
+  const NewCategoryDialog({super.key, required this.budgetId, this.category});
 
   final String budgetId;
+  final ExpenseCategory? category;
 
   @override
   ConsumerState<NewCategoryDialog> createState() => _NewCategoryDialogState();
@@ -18,12 +24,15 @@ class NewCategoryDialog extends ConsumerStatefulWidget {
 
 class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  late final TextEditingController _nameController =
+      TextEditingController(text: widget.category?.name ?? '');
 
-  String _selectedIcon = availableCategoryIcons.first;
-  String _selectedColor = availableCategoryColors.first;
+  late String _selectedIcon = widget.category?.icon ?? availableCategoryIcons.first;
+  late String _selectedColor = widget.category?.color ?? availableCategoryColors.first;
   bool _isSaving = false;
   String? _errorMessage;
+
+  bool get _isEditing => widget.category != null;
 
   @override
   void dispose() {
@@ -40,16 +49,31 @@ class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
     });
 
     try {
-      final category = await ref.read(expenseRepositoryProvider).createCategory(
-            budgetId: widget.budgetId,
-            name: _nameController.text.trim(),
-            icon: _selectedIcon,
-            color: _selectedColor,
-          );
-      // refresh (e non invalidate) per attendere il ricaricamento: così la nuova
-      // categoria è già nella lista quando lo schermo chiamante la preseleziona.
+      final repository = ref.read(expenseRepositoryProvider);
+      Object? result;
+      if (_isEditing) {
+        await repository.updateCategory(
+          budgetId: widget.budgetId,
+          category: widget.category!,
+          name: _nameController.text.trim(),
+          icon: _selectedIcon,
+          color: _selectedColor,
+        );
+        // Il fork di una predefinita ri-aggancia le spese del budget alla copia:
+        // ricarichiamo anche le spese perché la categoria mostrata può cambiare.
+        ref.invalidate(recentExpensesProvider(widget.budgetId));
+      } else {
+        result = await repository.createCategory(
+          budgetId: widget.budgetId,
+          name: _nameController.text.trim(),
+          icon: _selectedIcon,
+          color: _selectedColor,
+        );
+      }
+      // refresh (e non invalidate) per attendere il ricaricamento: così la
+      // categoria aggiornata è già nella lista quando lo schermo chiamante la usa.
       final _ = await ref.refresh(expenseCategoriesProvider(widget.budgetId).future);
-      if (mounted) Navigator.of(context).pop(category);
+      if (mounted) Navigator.of(context).pop(result);
     } catch (_) {
       setState(() {
         _isSaving = false;
@@ -61,7 +85,7 @@ class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Nuova categoria'),
+      title: Text(_isEditing ? 'Modifica categoria' : 'Nuova categoria'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -125,7 +149,7 @@ class _NewCategoryDialogState extends ConsumerState<NewCategoryDialog> {
           loading: _isSaving,
           onPressed: _save,
           spinnerSize: 16,
-          child: const Text('Crea'),
+          child: Text(_isEditing ? 'Salva' : 'Crea'),
         ),
       ],
     );

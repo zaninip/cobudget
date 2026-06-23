@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/anthropic_key_controller.dart';
 import '../../../../app/extraction_engine_controller.dart';
@@ -56,6 +57,20 @@ class SettingsScreen extends ConsumerWidget {
                     data: (members) => _MembersSection(members: members),
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (error, _) => Text('Errore nel caricamento dei membri: $error'),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                if (budgetId != null) ...[
+                  const _SectionTitle('Categorie'),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.category_outlined),
+                      title: const Text('Gestione categorie'),
+                      subtitle: const Text('Modifica icona, nome e colore'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/budget/$budgetId/categories'),
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
